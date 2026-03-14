@@ -1,0 +1,68 @@
+{
+  "expo": {
+    "name": "EstoqueAudit",
+    "slug": "estoqueaudit",
+    "version": "2.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "scheme": "estoqueaudit",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.ismael.estoqueaudit",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Escanear códigos de barras do estoque.",
+        "NSPhotoLibraryUsageDescription": "Salvar relatórios exportados.",
+        "NSPhotoLibraryAddUsageDescription": "Salvar relatórios de contagem."
+      }
+    },
+    "android": {
+      "package": "com.ismael.estoqueaudit",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/adaptive-icon.png",
+        "backgroundColor": "#09090B"
+      },
+      "edgeToEdgeEnabled": true,
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.RECORD_AUDIO"
+      ]
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "static",
+      "favicon": "./assets/images/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Escanear códigos de barras para identificar itens do estoque."
+        }
+      ],
+      "expo-sqlite",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/images/splash-icon.png",
+          "imageWidth": 200,
+          "resizeMode": "contain",
+          "backgroundColor": "#09090B"
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "fc3d6bab-22a7-4816-8dfd-b4387f727b53"
+      }
+    }
+  }
+}
