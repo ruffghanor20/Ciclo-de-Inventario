@@ -12,6 +12,7 @@ from datetime import datetime, timezone
 import uuid
 import io
 import csv
+import math
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -93,6 +94,12 @@ class CountEntryCreate(BaseModel):
     localizacao: str = ""
     observacao: str = ""
     escaneado: bool = False
+
+def validate_quantidade_contada(quantidade: float) -> None:
+    # Problema encontrado: a API aceitava quantidade negativa/NaN/infinita e persistia no banco.
+    # Solução: validar antes de calcular diferença e salvar/atualizar.
+    if not math.isfinite(quantidade) or quantidade < 0:
+        raise HTTPException(status_code=422, detail="quantidade_contada deve ser um número finito e >= 0")
 
 
 # ---- Stock Items ----
@@ -224,6 +231,7 @@ async def get_session_counts(session_id: str):
 
 @api_router.post("/counts", response_model=CountEntry)
 async def create_count(count_data: CountEntryCreate):
+    validate_quantidade_contada(count_data.quantidade_contada)
     entry = CountEntry(
         **count_data.dict(),
         diferenca=count_data.quantidade_contada - count_data.saldo_sistema
@@ -234,6 +242,7 @@ async def create_count(count_data: CountEntryCreate):
 
 @api_router.put("/counts/{count_id}")
 async def update_count(count_id: str, quantidade_contada: float, observacao: str = ""):
+    validate_quantidade_contada(quantidade_contada)
     count = await db.count_entries.find_one({"id": count_id}, {"_id": 0})
     if not count:
         raise HTTPException(status_code=404, detail="Registro não encontrado")
