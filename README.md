@@ -51,34 +51,7 @@ Ciclo-de-Inventario/
 | JWT + bcrypt + passlib | Autenticação |
 | Python 3.x | Linguagem |
 ---
-## ⚙️ Como Executar
-### Pré-requisitos
-- Node.js ≥ 18 e Yarn (ou npm)
-- Python 3.x e pip
-- MongoDB rodando localmente ou em nuvem
-### Backend
-```bash
-cd backend
-pip install -r requirements.txt
-# Configure as variáveis no arquivo .env:
-#   MONGO_URL="mongodb://localhost:27017"
-#   DB_NAME="test_database"
-python server.py
-```
-O servidor ficará disponível em `http://localhost:8000`.
-### Frontend
-```bash
-cd frontend
-yarn install        # ou: npm install
-npx expo start
-```
-Escolha uma das opções:
-- **Android:** pressione `a`
-- **iOS:** pressione `i`
-- **Web:** pressione `w`
-- **Expo Go:** escaneie o QR code com o aplicativo Expo Go
-> Configure `EXPO_PUBLIC_BACKEND_URL` no arquivo `frontend/.env` para apontar para o endereço do backend.
----
+
 ## 📱 Funcionalidades
 ### 🏠 Dashboard
 - Cards de resumo: total de itens, contagens realizadas, divergências e itens OK
