@@ -22,7 +22,7 @@ export default function DashboardScreen() {
   const chartWidth = width - 64;
 
   const [refreshing, setRefreshing] = useState(false);
-  const [stats, setStats] = useState({ total: 0, ok: 0, falta: 0, sobra: 0 });
+  const [stats, setStats] = useState({ total: 0, ok: 0, falta: 0, diferenca: 0 });
   const [totalItems, setTotalItems] = useState(0);
   const [sessionName, setSessionName] = useState('');
   const [sessionId, setSessionId] = useState('');
@@ -72,7 +72,7 @@ export default function DashboardScreen() {
   const pieData = [
     stats.ok > 0 ? { value: stats.ok, color: Colors.brand.success, text: `${stats.ok}` } : null,
     stats.falta > 0 ? { value: stats.falta, color: Colors.brand.error, text: `${stats.falta}` } : null,
-    stats.sobra > 0 ? { value: stats.sobra, color: Colors.brand.accent, text: `${stats.sobra}` } : null,
+    stats.diferenca > 0 ? { value: stats.diferenca, color: Colors.brand.accent, text: `${stats.diferenca}` } : null,
   ].filter(Boolean) as { value: number; color: string; text: string }[];
 
   const hasCounts = stats.total > 0;
@@ -88,7 +88,7 @@ export default function DashboardScreen() {
         {/* Header */}
         <View style={styles.header}>
           <View>
-            <Text style={styles.appName}>EstoqueAudit</Text>
+            <Text style={styles.appName}>Ciclo de Inventário</Text>
             <Text style={styles.sessionName}>{sessionName || 'Carregando...'}</Text>
           </View>
           <View style={styles.onlineDot} />
@@ -115,7 +115,7 @@ export default function DashboardScreen() {
           <StatCard
             testID="stat-divergences"
             label="Divergências"
-            value={stats.falta + stats.sobra}
+            value={stats.falta + stats.diferenca}
             icon={<AlertTriangle size={20} color={Colors.brand.error} />}
             color={Colors.brand.error}
             onPress={() => router.push({ pathname: '/divergences', params: { sessionId } })}
@@ -183,7 +183,7 @@ export default function DashboardScreen() {
                 </View>
                 <View style={styles.legendItem}>
                   <View style={[styles.legendDot, { backgroundColor: Colors.brand.accent }]} />
-                  <Text style={styles.legendText}>Sobra: {stats.sobra}</Text>
+                  <Text style={styles.legendText}>Diferença: {stats.diferenca}</Text>
                 </View>
               </View>
             </View>

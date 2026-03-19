@@ -12,6 +12,12 @@ import { getItemByCode, StockItem } from '../src/db/itemsDB';
 import { ensureOpenSession } from '../src/db/sessionsDB';
 import { saveCount, getCountByCodigo } from '../src/db/countsDB';
 
+function parseQuantidade(value: string): number {
+  const normalized = value.trim().replace(',', '.');
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
 export default function CountScreen() {
   const router = useRouter();
   const { codigo, sessionId: paramSessionId } = useLocalSearchParams<{ codigo: string; sessionId?: string }>();
@@ -26,7 +32,7 @@ export default function CountScreen() {
   const [sessionId, setSessionId] = useState('');
   const quantRef = useRef<TextInput>(null);
 
-  const quantidade = parseFloat(quantidadeStr) || 0;
+  const quantidade = parseQuantidade(quantidadeStr);
   const diferenca = quantidade - saldoSistema;
 
   useEffect(() => {
@@ -55,17 +61,28 @@ export default function CountScreen() {
     } else {
       setQuantidadeStr('');
     }
+
+    // Fluxo B (scanner): ao abrir a tela, focar automaticamente o campo de quantidade.
+    setTimeout(() => {
+      quantRef.current?.focus();
+    }, 250);
+
   }, [codigo, paramSessionId]);
 
   const adjust = (delta: number) => {
-    const current = parseFloat(quantidadeStr) || 0;
+    const current = parseQuantidade(quantidadeStr);
     const next = Math.max(0, current + delta);
     setQuantidadeStr(String(next));
   };
 
+  const handleQuantidadeChange = (value: string) => {
+    const cleaned = value.replace(/[^0-9.,]/g, '');
+    setQuantidadeStr(cleaned);
+  };
+
   const handleSave = async () => {
     if (!codigo) return;
-    const qtd = parseFloat(quantidadeStr);
+    const qtd = parseQuantidade(quantidadeStr);
     if (isNaN(qtd) || qtd < 0) {
       Alert.alert('Valor inválido', 'Informe uma quantidade válida.');
       return;
@@ -94,7 +111,7 @@ export default function CountScreen() {
   };
 
   const difColor = diferenca === 0 ? Colors.text.muted : diferenca < 0 ? Colors.brand.error : Colors.brand.success;
-  const difLabel = diferenca === 0 ? 'Sem divergência' : diferenca < 0 ? `Falta ${Math.abs(diferenca)}` : `Sobra +${diferenca}`;
+  const difLabel = diferenca === 0 ? 'Sem divergência' : diferenca < 0 ? `Falta ${Math.abs(diferenca)}` : `Diferença +${diferenca}`;
 
   return (
     <SafeAreaView style={styles.safe} edges={['bottom']}>
@@ -142,11 +159,13 @@ export default function CountScreen() {
                 ref={quantRef}
                 style={styles.quantInput}
                 value={quantidadeStr}
-                onChangeText={setQuantidadeStr}
-                keyboardType="numeric"
+                onChangeText={handleQuantidadeChange}
+                keyboardType={Platform.OS === 'ios' ? 'decimal-pad' : 'numeric'}
                 placeholder="0"
                 placeholderTextColor={Colors.text.muted}
                 selectTextOnFocus
+                editable
+                showSoftInputOnFocus
               />
               <TouchableOpacity
                 testID="qty-plus-btn"
@@ -154,6 +173,14 @@ export default function CountScreen() {
                 onPress={() => adjust(1)}
               >
                 <Plus size={20} color={Colors.text.primary} />
+              </TouchableOpacity>
+            </View>
+            <View style={styles.quickAdjustRow}>
+              <TouchableOpacity style={styles.quickBtn} onPress={() => adjust(-10)}>
+                <Text style={styles.quickBtnText}>-10</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.quickBtn} onPress={() => adjust(10)}>
+                <Text style={styles.quickBtnText}>+10</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -241,6 +268,18 @@ const styles = StyleSheet.create({
   label: { fontSize: 13, fontWeight: '600', color: Colors.text.secondary },
   labelRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   quantRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  quickAdjustRow: { flexDirection: 'row', gap: 10, marginTop: 2 },
+  quickBtn: {
+    flex: 1,
+    height: 40,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: Colors.border.strong,
+    backgroundColor: Colors.bg.tertiary,
+  },
+  quickBtnText: { color: Colors.text.secondary, fontWeight: '700', fontSize: 13 },
   adjBtn: {
     width: 48,
     height: 48,

@@ -11,6 +11,17 @@ import { Colors } from '../../src/theme/colors';
 import { getItemByCode } from '../../src/db/itemsDB';
 import { ensureOpenSession } from '../../src/db/sessionsDB';
 
+function normalizeNumericCode(value: string): string {
+  const trimmed = value.trim();
+  if (!trimmed) return '';
+  const onlyDigits = trimmed.replace(/\D/g, '');
+  if (!onlyDigits) return '';
+  // Problema encontrado: algumas leituras/entradas chegam como texto (ex.: "COD: 789123...").
+  // Solução: extrair e usar o trecho numérico para permitir contagem mesmo sem barcode físico.
+  const preferredMatch = onlyDigits.match(/\d{8,14}/);
+  return preferredMatch ? preferredMatch[0] : onlyDigits;
+}
+
 export default function ScanScreen() {
   const router = useRouter();
   const [permission, requestPermission] = useCameraPermissions();
@@ -20,43 +31,81 @@ export default function ScanScreen() {
   const [lastCode, setLastCode] = useState('');
   const [foundItem, setFoundItem] = useState<{ descricao: string; saldo: number; localizacao: string } | null>(null);
   const [notFound, setNotFound] = useState(false);
+  // Anti-duplicado: evita disparos repetidos do mesmo código em sequência
+  const lastScanAtRef = useRef(0);
+  const lastScanValueRef = useRef<string>('');
   const cooldownRef = useRef(false);
+  const cooldownTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  function sanitizeBarcodeInput(value: string): string {
+    // Problema encontrado: no modo manual, valor colado com espaços/hífens falhava na busca.
+    // Solução: normalizar para somente dígitos antes de buscar/rotear para contagem.
+    return normalizeNumericCode(value);
+  }
 
   useEffect(() => {
     if (Platform.OS !== 'web' && !permission?.granted) {
       requestPermission();
     }
-  }, []);
+    // Problema encontrado: timer de cooldown pode ficar pendente ao desmontar a tela.
+    // Solução: limpar timer em unmount para evitar update fora do ciclo de vida.
+    return () => {
+      if (cooldownTimerRef.current) {
+        clearTimeout(cooldownTimerRef.current);
+      }
+    };
+  }, [permission?.granted, requestPermission]);
 
   const handleCodeDetected = useCallback(
-    (codigo: string) => {
-      if (cooldownRef.current) return;
-      cooldownRef.current = true;
-      setScanned(true);
-      setLastCode(codigo);
+  (codigo: string) => {
+    const value = normalizeNumericCode(codigo);
+    if (!value) return;
 
-      const item = getItemByCode(codigo);
-      if (item) {
-        setFoundItem({ descricao: item.descricao, saldo: item.saldo_sistema, localizacao: item.localizacao });
-        setNotFound(false);
-        if (Platform.OS !== 'web') Vibration.vibrate(80);
-      } else {
-        setFoundItem(null);
-        setNotFound(true);
-        if (Platform.OS !== 'web') Vibration.vibrate([0, 80, 80, 80]);
-      }
+    // Bloqueia apenas "rajadas" do mesmo código (ex.: MLKit disparando várias vezes)
+    const now = Date.now();
+    const lastValue = lastScanValueRef.current;
+    const lastAt = lastScanAtRef.current;
 
-      // Reset cooldown after 3 seconds
-      setTimeout(() => {
-        cooldownRef.current = false;
-      }, 3000);
-    },
-    []
-  );
+    // Se o mesmo código repetir dentro de 1500ms, ignora
+    if (lastValue === value && now - lastAt < 1500) return;
+
+    // Pequeno "cooldown" global (curto) para evitar duplo clique/duplo callback
+    if (cooldownRef.current) return;
+    cooldownRef.current = true;
+
+    lastScanValueRef.current = value;
+    lastScanAtRef.current = now;
+
+    setScanned(true);
+    setLastCode(value);
+
+    const item = getItemByCode(value);
+    if (item) {
+      setFoundItem({ descricao: item.descricao, saldo: item.saldo_sistema, localizacao: item.localizacao });
+      setNotFound(false);
+      if (Platform.OS !== 'web') Vibration.vibrate(80);
+    } else {
+      setFoundItem(null);
+      setNotFound(true);
+      if (Platform.OS !== 'web') Vibration.vibrate([0, 80, 80, 80]);
+    }
+
+    // Libera rápido para permitir escanear outro item sem esperar 3s
+    if (cooldownTimerRef.current) {
+      clearTimeout(cooldownTimerRef.current);
+    }
+    cooldownTimerRef.current = setTimeout(() => {
+      cooldownRef.current = false;
+    }, 350);
+  },
+  []
+);
 
   const handleManualSubmit = () => {
-    if (!manualCode.trim()) return;
-    handleCodeDetected(manualCode.trim());
+    const sanitized = sanitizeBarcodeInput(manualCode);
+    if (!sanitized) return;
+    setManualCode(sanitized);
+    handleCodeDetected(sanitized);
   };
 
   const goToCount = () => {
@@ -75,6 +124,10 @@ export default function ScanScreen() {
     setNotFound(false);
     setManualCode('');
     cooldownRef.current = false;
+    if (cooldownTimerRef.current) {
+      clearTimeout(cooldownTimerRef.current);
+      cooldownTimerRef.current = null;
+    }
   };
 
   if (!permission && Platform.OS !== 'web') {
@@ -112,9 +165,8 @@ export default function ScanScreen() {
             style={StyleSheet.absoluteFillObject}
             facing="back"
             onBarcodeScanned={scanned ? undefined : ({ data }) => handleCodeDetected(data)}
-            barcodeScannerSettings={{
-              barcodeTypes: ['qr', 'ean13', 'ean8', 'code128', 'code39', 'upcA', 'upcE', 'pdf417'],
-            }}
+            // Problema encontrado: barcodeScannerSettings estava gerando cast inválido de BarcodeType no Android.
+            // Solução: remover a lista customizada e usar a configuração padrão nativa para evitar crash.
           />
           {/* Overlay */}
           <View style={styles.overlay}>
@@ -156,7 +208,7 @@ export default function ScanScreen() {
               testID="manual-barcode-input"
               style={styles.manualInput}
               value={manualCode}
-              onChangeText={setManualCode}
+              onChangeText={(value) => setManualCode(sanitizeBarcodeInput(value))}
               placeholder="Ex: 7891234567890"
               placeholderTextColor={Colors.text.muted}
               keyboardType="number-pad"

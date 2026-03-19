@@ -5,17 +5,18 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from 'expo-router';
-import { FileText, FileSpreadsheet, FolderOpen, X, ChevronDown, CheckCircle } from 'lucide-react-native';
+import { FileText, FileSpreadsheet, FolderOpen, X, ChevronDown, CheckCircle, Upload } from 'lucide-react-native';
 import { Colors } from '../../src/theme/colors';
 import { getAllSessions, Session, ensureOpenSession, closeSession, createSession } from '../../src/db/sessionsDB';
 import { getCountsBySession, getSessionStats } from '../../src/db/countsDB';
 import { exportCSV, exportPDF } from '../../src/services/exportService';
+import { exportXLSX, importItemsFromXLSX } from '../../src/services/xlsxService';
 
 export default function ExportScreen() {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [selectedSession, setSelectedSession] = useState<Session | null>(null);
-  const [stats, setStats] = useState({ total: 0, ok: 0, falta: 0, sobra: 0 });
-  const [loading, setLoading] = useState<'csv' | 'pdf' | null>(null);
+  const [stats, setStats] = useState({ total: 0, ok: 0, falta: 0, diferenca: 0 });
+  const [loading, setLoading] = useState<'csv' | 'pdf' | 'xlsx' | 'import' | null>(null);
   const [showSessions, setShowSessions] = useState(false);
 
   const loadData = useCallback(() => {
@@ -70,6 +71,40 @@ export default function ExportScreen() {
       await exportPDF(entries, selectedSession);
     } catch (e: any) {
       Alert.alert('Erro', e?.message ?? 'Falha ao gerar PDF.');
+    } finally {
+      setLoading(null);
+    }
+  };
+
+  const handleExportXLSX = async () => {
+    if (!selectedSession) return;
+    const entries = getCountsBySession(selectedSession.id);
+    if (entries.length === 0) {
+      Alert.alert('Atenção', 'Nenhuma contagem registrada nesta sessão.');
+      return;
+    }
+    setLoading('xlsx');
+    try {
+      await exportXLSX(entries, selectedSession);
+    } catch (e: any) {
+      Alert.alert('Erro', e?.message ?? 'Falha ao exportar XLSX.');
+    } finally {
+      setLoading(null);
+    }
+  };
+
+  const handleImportXLSX = async () => {
+    setLoading('import');
+    try {
+      const summary = await importItemsFromXLSX();
+      if (!summary) return;
+      Alert.alert(
+        'Importação concluída',
+        `Arquivo: ${summary.fileName}\nCriados: ${summary.created}\nAtualizados: ${summary.updated}\nIgnorados: ${summary.ignored}`
+      );
+      loadData();
+    } catch (e: any) {
+      Alert.alert('Erro', e?.message ?? 'Falha ao importar XLSX.');
     } finally {
       setLoading(null);
     }
@@ -170,8 +205,8 @@ export default function ExportScreen() {
               <Text style={styles.statLabel}>Falta</Text>
             </View>
             <View style={[styles.statBox, { borderColor: Colors.brand.accent + '40' }]}>
-              <Text style={[styles.statVal, { color: Colors.brand.accent }]}>{stats.sobra}</Text>
-              <Text style={styles.statLabel}>Sobra</Text>
+              <Text style={[styles.statVal, { color: Colors.brand.accent }]}>{stats.diferenca}</Text>
+              <Text style={styles.statLabel}>Diferença</Text>
             </View>
           </View>
         )}
@@ -179,6 +214,23 @@ export default function ExportScreen() {
         {/* Export Buttons */}
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Formatos de Exportação</Text>
+
+          <TouchableOpacity
+            testID="export-xlsx-btn"
+            style={[styles.exportBtn, styles.exportXlsxBtn]}
+            onPress={handleExportXLSX}
+            disabled={loading !== null}
+          >
+            {loading === 'xlsx' ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <FileSpreadsheet size={24} color="#fff" />
+            )}
+            <View style={styles.exportBtnInfo}>
+              <Text style={styles.exportBtnTitle}>Exportar XLSX</Text>
+              <Text style={styles.exportBtnSub}>Planilha nativa do Excel</Text>
+            </View>
+          </TouchableOpacity>
 
           <TouchableOpacity
             testID="export-csv-btn"
@@ -211,6 +263,26 @@ export default function ExportScreen() {
             <View style={styles.exportBtnInfo}>
               <Text style={styles.exportBtnTitle}>Exportar PDF</Text>
               <Text style={styles.exportBtnSub}>Relatório formatado para impressão</Text>
+            </View>
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Importação</Text>
+          <TouchableOpacity
+            testID="import-xlsx-btn"
+            style={[styles.exportBtn, styles.importXlsxBtn]}
+            onPress={handleImportXLSX}
+            disabled={loading !== null}
+          >
+            {loading === 'import' ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Upload size={24} color="#fff" />
+            )}
+            <View style={styles.exportBtnInfo}>
+              <Text style={styles.exportBtnTitle}>Importar XLSX</Text>
+              <Text style={styles.exportBtnSub}>Atualiza estoque a partir de planilha</Text>
             </View>
           </TouchableOpacity>
         </View>
@@ -298,8 +370,10 @@ const styles = StyleSheet.create({
     padding: 16,
     gap: 14,
   },
+  exportXlsxBtn: { backgroundColor: '#2563EB' },
   exportCsvBtn: { backgroundColor: '#059669' },
   exportPdfBtn: { backgroundColor: '#DC2626' },
+  importXlsxBtn: { backgroundColor: '#0EA5E9' },
   exportBtnInfo: { flex: 1 },
   exportBtnTitle: { fontSize: 16, fontWeight: '700', color: '#fff' },
   exportBtnSub: { fontSize: 12, color: 'rgba(255,255,255,0.75)', marginTop: 2 },

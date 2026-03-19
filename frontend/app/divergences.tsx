@@ -37,7 +37,7 @@ export default function DivergencesScreen() {
   }, [loadData]);
 
   const totalFalta = entries.filter((e) => e.diferenca < 0).reduce((s, e) => s + Math.abs(e.diferenca), 0);
-  const totalSobra = entries.filter((e) => e.diferenca > 0).reduce((s, e) => s + e.diferenca, 0);
+  const totalDiferenca = entries.filter((e) => e.diferenca > 0).reduce((s, e) => s + e.diferenca, 0);
 
   return (
     <SafeAreaView style={styles.safe} edges={['bottom']}>
@@ -52,7 +52,7 @@ export default function DivergencesScreen() {
           <View style={[styles.sumBox, { borderColor: Colors.brand.success + '40' }]}>
             <TrendingUp size={16} color={Colors.brand.success} />
             <Text style={[styles.sumVal, { color: Colors.brand.success }]}>{entries.filter((e) => e.diferenca > 0).length}</Text>
-            <Text style={styles.sumLabel}>Sobras (+{totalSobra} un.)</Text>
+            <Text style={styles.sumLabel}>Diferenças (+{totalDiferenca} un.)</Text>
           </View>
         </View>
       )}
