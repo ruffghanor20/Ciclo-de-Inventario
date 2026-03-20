@@ -1,128 +1,186 @@
-# 📦 EstoqueAudit Pro — Ciclo de Inventário
-Aplicação completa de **contagem cíclica e auditoria de estoque** para ambientes industriais e de armazém. Permite contagem de estoque em tempo real, rastreamento de divergências, leitura de código de barras e geração de relatórios detalhados, com suporte a operação offline.
----
-## 🗂️ Estrutura do Projeto
-```
-Ciclo-de-Inventario/
-├── backend/            # API REST em FastAPI (Python)
-│   ├── server.py
-│   ├── requirements.txt
-│   └── .env
-├── frontend/           # App mobile/web em React Native + Expo
-│   ├── app/
-│   │   ├── (tabs)/
-│   │   │   ├── dashboard.tsx     # Painel principal com estatísticas e gráficos
-│   │   │   ├── inventory.tsx     # Lista de itens do estoque com filtros
-│   │   │   ├── scan.tsx          # Leitor de código de barras
-│   │   │   └── export.tsx        # Exportação e gerenciamento de sessões
-│   │   ├── count.tsx             # Modal de registro de contagem
-│   │   ├── divergences.tsx       # Lista de divergências
-│   │   └── _layout.tsx
-│   ├── assets/
-│   ├── package.json
-│   └── .env
-├── memory/
-│   └── PRD.md          # Documento de Requisitos do Produto
-├── tests/
-│   └── __init__.py
-├── design_guidelines.json
-└── test_result.md
-```
----
-## 🚀 Tecnologias
-### Frontend
-| Tecnologia | Uso |
-|---|---|
-| React Native + Expo SDK 54 | Framework do app |
-| Expo Router | Navegação baseada em arquivos |
-| expo-sqlite | Banco de dados local (iOS/Android) |
-| react-native-gifted-charts | Gráficos de barras e pizza |
-| expo-camera | Leitura de código de barras |
-| expo-print + expo-sharing | Exportação PDF e CSV |
-| lucide-react-native | Ícones |
-| TypeScript | Tipagem estática |
-### Backend
-| Tecnologia | Uso |
-|---|---|
-| FastAPI 0.110.1 | Framework da API REST |
-| Uvicorn | Servidor ASGI |
-| MongoDB + Motor | Banco de dados assíncrono |
-| Pydantic | Validação de dados |
-| JWT + bcrypt + passlib | Autenticação |
-| Python 3.x | Linguagem |
----
+# Ciclo de Inventario
 
-## 📱 Funcionalidades
-### 🏠 Dashboard
-- Cards de resumo: total de itens, contagens realizadas, divergências e itens OK
-- Gráfico de barras com top 5 divergências
-- Gráfico de pizza (OK / Falta / Sobra)
-- Últimas 5 contagens realizadas
-- Atalhos para Scanner, Estoque e Exportação
-### 📋 Estoque (Inventory)
-- Lista completa de itens com busca por código ou descrição
-- Filtros: Todos | Divergência | Não contados | OK
-- Indicadores visuais de status por item
-- Navegação direta para registro de contagem
-### 📷 Scanner
-- Leitura de câmera com detecção automática de código de barras
-- Formatos suportados: EAN-13, EAN-8, Code128, Code39, QR, UPC-A, UPC-E, PDF417
-- Fallback por digitação manual (web / sem permissão de câmera)
-- Feedback tátil (vibração) ao escanear com sucesso
-### 📝 Registro de Contagem
-- Busca de item por código de barras
-- Entrada de quantidade com botões `+` / `−`
-- Cálculo automático de diferença em tempo real
-- Indicador de divergência (vermelho = falta, verde = sobra)
-- Campo de observações opcional
-### ⚠️ Divergências
-- Resumo de faltas e sobras com totais
-- Lista ordenada por magnitude
-- Ícones visuais: ↓ falta / ↑ sobra
-- Toque no item para corrigir a contagem
-### 📤 Exportação
-- Seletor de sessão de inventário
-- Exportação CSV (UTF-8, delimitador `;`, compatível com Excel)
-- Exportação PDF com relatório formatado
-- Gerenciamento de sessões (encerrar / criar nova)
----
-## 🌐 API — Principais Endpoints
-**Base URL:** configurado via `EXPO_PUBLIC_BACKEND_URL`
-| Método | Rota | Descrição |
-|---|---|---|
-| `GET` | `/api/items` | Listar itens do estoque |
-| `GET` | `/api/items/barcode/{codigo}` | Buscar item por código de barras |
-| `POST` | `/api/items` | Criar item |
-| `PUT` | `/api/items/{item_id}` | Atualizar item |
-| `POST` | `/api/items/bulk` | Importação em lote |
-| `GET` | `/api/sessions` | Listar sessões |
-| `POST` | `/api/sessions` | Criar sessão |
-| `PUT` | `/api/sessions/{session_id}/close` | Encerrar sessão |
-| `GET` | `/api/sessions/{session_id}/counts` | Contagens da sessão |
-| `POST` | `/api/counts` | Registrar contagem |
-| `PUT` | `/api/counts/{count_id}` | Atualizar contagem |
-| `GET` | `/api/dashboard` | Estatísticas do painel |
-| `GET` | `/api/export/csv/{session_id}` | Exportar CSV da sessão |
----
-## 🎨 Design System
-**Tema:** Dark Professional (Tactical Minimalism)
-| Token | Valor | Uso |
-|---|---|---|
-| Background primário | `#09090B` | Fundo principal |
-| Background secundário | `#18181B` | Cards e containers |
-| Texto primário | `#FAFAFA` | Títulos e texto principal |
-| Texto secundário | `#A1A1AA` | Labels e subtítulos |
-| Azul (primary) | `#3B82F6` | Botões e destaques |
-| Âmbar (accent) | `#F59E0B` | Alertas e destaques |
-| Verde (success) | `#10B981` | Status OK / sobra |
-| Vermelho (error) | `#EF4444` | Divergências / falta |
----
-## 🧪 Testes
-```bash
-cd tests
-pytest
+Aplicativo mobile/web para contagem ciclica de estoque com leitura de codigo de barras, contagem manual, controle por sessao, programacao por curva ABC e exportacao de relatorios.
+
+O projeto foi construido com Expo + React Native e usa `expo-router` para navegacao. Em Android/iOS os dados ficam em SQLite local; na web o app roda com uma base em memoria para preview.
+
+## Principais recursos
+
+- Dashboard com indicadores da sessao atual, top divergencias e ultimas contagens.
+- Cadastro e consulta de itens de estoque com filtros por status da contagem.
+- Scanner de codigo de barras com fallback para digitacao manual.
+- Registro de contagem por item, inclusive para codigos ainda nao cadastrados.
+- Programacao de recontagem com base em data da ultima contagem e curva ABC.
+- Gestao de sessoes de inventario: abrir, encerrar, selecionar e exportar.
+- Importacao de itens por planilha XLSX.
+- Exportacao de relatorios em XLSX, CSV e PDF.
+
+## Stack
+
+- Expo 54
+- React Native 0.81
+- React 19
+- Expo Router
+- Expo SQLite
+- Expo Camera
+- `xlsx` para importacao/exportacao de planilhas
+
+## Estrutura
+
+```text
+app/
+  (tabs)/
+    dashboard.tsx   -> resumo da operacao
+    inventory.tsx   -> estoque, busca e cadastro manual
+    scan.tsx        -> leitura de codigo de barras
+    schedule.tsx    -> programacao de contagem
+    export.tsx      -> importacao/exportacao e sessoes
+  count.tsx         -> registro de contagem
+  divergences.tsx   -> consulta de divergencias
+src/
+  db/               -> persistencia local e queries
+  services/         -> importacao/exportacao
+  components/       -> componentes reutilizaveis
+  utils/            -> regras de agenda e datas
+scripts/
+  gerar_layout_importacao.js
 ```
-O progresso e protocolo de testes está documentado em [`test_result.md`](./test_result.md).
----
-## 📄 Licença
-Este projeto é de uso interno. Consulte o mantenedor para informações sobre licenciamento.
+
+## Como executar
+
+### Requisitos
+
+- Node.js 18+
+- npm ou yarn
+- Expo CLI via `npx expo`
+
+### Instalacao
+
+```bash
+npm install
+```
+
+ou
+
+```bash
+yarn install
+```
+
+### Desenvolvimento
+
+```bash
+npm run start
+```
+
+Comandos adicionais:
+
+```bash
+npm run android
+npm run ios
+npm run web
+npm run lint
+```
+
+## Fluxo operacional
+
+1. Importe a planilha de estoque na aba de exportacao/importacao ou cadastre itens manualmente.
+2. O app garante que sempre exista uma sessao aberta para receber as contagens.
+3. Use o scanner ou acesse um item pela lista de estoque.
+4. Registre a quantidade contada e acompanhe divergencias no dashboard.
+5. Exporte os resultados da sessao em XLSX, CSV ou PDF.
+
+## Persistencia de dados
+
+### Android e iOS
+
+- Banco local SQLite: `estoqueaudit.db`
+- Tabelas principais:
+  - `stock_items`
+  - `inventory_sessions`
+  - `count_entries`
+  - `app_settings`
+
+### Web
+
+- Base em memoria, inicializada em runtime.
+- Os dados de preview nao persistem entre reinicios da aplicacao web.
+
+## Importacao de planilha
+
+O app importa a primeira aba do arquivo XLSX e aceita aliases de cabecalho para localizar as colunas. O arquivo de exemplo do projeto esta em:
+
+- `layout_importacao_estoqueaudit.xlsx`
+
+Colunas recomendadas:
+
+```text
+codigo
+descricao
+categoria
+unidade
+localizacao
+saldo_sistema
+estoque_minimo
+custo_ajuste
+contado
+curva_abc
+proxima_contagem
+```
+
+Regras da importacao:
+
+- `codigo` e obrigatorio; linhas sem codigo sao ignoradas.
+- Se `descricao` estiver vazia, o app cria uma descricao padrao.
+- `curva_abc` aceita `A`, `B` ou `C`.
+- `contado` aceita `dd/mm/aaaa`, `yyyy-mm-dd` ou serial de data do Excel.
+- Se `proxima_contagem` estiver vazia, o app calcula automaticamente a partir da ultima contagem e da curva ABC.
+- Se o item ja existir, ele e atualizado; caso contrario, e criado.
+
+Para regenerar o layout de importacao:
+
+```bash
+node scripts/gerar_layout_importacao.js
+```
+
+Observacao: esse script contem caminhos absolutos voltados ao ambiente original de desenvolvimento e pode precisar de ajuste antes de ser executado em outra maquina.
+
+## Exportacao
+
+Formatos disponiveis por sessao:
+
+- XLSX
+- CSV
+- PDF
+
+Os relatorios incluem, entre outros campos:
+
+- codigo
+- descricao
+- saldo do sistema
+- quantidade contada
+- diferenca
+- custo do ajuste
+- localizacao
+- observacao
+- responsavel
+- data/hora do registro
+
+## Permissoes e comportamento por plataforma
+
+- Camera: necessaria para leitura de codigo de barras em dispositivos nativos.
+- Web: o scanner funciona em modo manual por padrao.
+- Compartilhamento/arquivos: usado para exportar relatorios em plataformas nativas.
+
+## Configuracao
+
+O repositorio possui um arquivo `.env` com configuracoes de desenvolvimento do Expo/Metro. No estado atual do frontend, nao ha consumo relevante de backend dentro de `src/` ou `app/`; o fluxo principal funciona localmente com persistencia no dispositivo.
+
+## Observacoes tecnicas
+
+- O projeto faz seed de dados de demonstracao quando a base local esta vazia.
+- A rota inicial redireciona para `/(tabs)/dashboard`.
+- A navegacao e baseada em arquivos com `expo-router`.
+
+## Licenca
+
+Defina a licenca do projeto conforme a necessidade do time.
