@@ -1,5 +1,6 @@
 // Web-compatible in-memory database for preview
 // Native builds use database.native.ts with SQLite
+import type { DatabaseAdapter, DbRunResult } from './database.types';
 
 export function uuid(): string {
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
@@ -25,7 +26,7 @@ class WebDb {
 
   withTransactionSync(fn: () => void): void { fn(); }
 
-  runSync(sql: string, args: any[] = []): any {
+  runSync(sql: string, args: unknown[] = []): DbRunResult {
     const upper = sql.trim().toUpperCase();
     if (upper.startsWith('INSERT')) return this._insert(sql, args);
     if (upper.startsWith('UPDATE')) return this._update(sql, args);
@@ -33,11 +34,11 @@ class WebDb {
     return { changes: 0 };
   }
 
-  getFirstSync<T>(sql: string, args: any[] = []): T | null {
+  getFirstSync<T>(sql: string, args: unknown[] = []): T | null {
     return this.getAllSync<T>(sql, args)[0] ?? null;
   }
 
-  getAllSync<T>(sql: string, args: any[] = []): T[] {
+  getAllSync<T>(sql: string, args: unknown[] = []): T[] {
     return this._select<T>(sql, args);
   }
 
@@ -55,7 +56,7 @@ class WebDb {
     return parts;
   }
 
-  private _insert(sql: string, args: any[]): any {
+  private _insert(sql: string, args: unknown[]): DbRunResult {
     const m = sql.match(/INSERT(?:\s+OR\s+IGNORE)?\s+INTO\s+(\w+)\s*\(([^)]+)\)\s+VALUES\s*\(([^)]+)\)/i);
     if (!m) return { changes: 0 };
     const tbl = this.getTable(m[1]);
@@ -77,7 +78,7 @@ class WebDb {
     return { changes: 1 };
   }
 
-  private _update(sql: string, args: any[]): any {
+  private _update(sql: string, args: unknown[]): DbRunResult {
     const tblMatch = sql.match(/UPDATE\s+(\w+)\s+SET\s+(.+?)\s+WHERE\s+(.+)/i);
     if (!tblMatch) return { changes: 0 };
     const tbl = this.getTable(tblMatch[1]);
@@ -100,7 +101,7 @@ class WebDb {
     return { changes };
   }
 
-  private _delete(sql: string, args: any[]): any {
+  private _delete(sql: string, args: unknown[]): DbRunResult {
     const m = sql.match(/DELETE\s+FROM\s+(\w+)\s+WHERE\s+(.+)/i);
     if (!m) return { changes: 0 };
     const tbl = this.getTable(m[1]);
@@ -111,7 +112,7 @@ class WebDb {
     return { changes: before - keep.length };
   }
 
-  private _select<T>(sql: string, args: any[]): T[] {
+  private _select<T>(sql: string, args: unknown[]): T[] {
     const m = sql.match(
       /SELECT\s+(DISTINCT\s+)?(.+?)\s+FROM\s+(\w+)(?:\s+WHERE\s+(.+?))?(?:\s+ORDER\s+BY\s+(.+?))?(?:\s+LIMIT\s+(\d+))?$/i
     );
@@ -132,19 +133,19 @@ class WebDb {
     if (distinct) {
       const col = cols.replace(/^DISTINCT\s+/i, '').trim();
       const seen = new Set();
-      return tbl.reduce((acc, row) => {
+      return tbl.reduce<T[]>((acc, row) => {
         const v = row[col];
         if (v !== undefined && v !== '' && v !== null && !seen.has(v)) {
           seen.add(v);
           acc.push({ [col]: v } as T);
         }
         return acc;
-      }, [] as T[]);
+      }, []);
     }
     return tbl as T[];
   }
 
-  private _buildPred(where: string, args: any[]): (row: Row) => boolean {
+  private _buildPred(where: string, args: unknown[]): (row: Row) => boolean {
     where = where.trim();
     let ai = 0;
 
@@ -304,7 +305,7 @@ class WebDb {
   }
 }
 
-export const db = new WebDb();
+export const db: DatabaseAdapter = new WebDb();
 
 export function openDatabase() { return db; }
 

@@ -1,10 +1,11 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import {
   View, Text, FlatList, StyleSheet, TouchableOpacity,
-  RefreshControl, ScrollView, TextInput, Alert, KeyboardAvoidingView, Platform,
+  RefreshControl, ScrollView, TextInput, Alert, KeyboardAvoidingView, Platform, Modal, Pressable,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useRouter } from 'expo-router';
+import { Filter, X } from 'lucide-react-native';
 import { Colors } from '../../src/theme/colors';
 import { SearchBar } from '../../src/components/SearchBar';
 import { ItemRow } from '../../src/components/ItemRow';
@@ -15,12 +16,20 @@ import { ensureOpenSession } from '../../src/db/sessionsDB';
 import { formatDateBr, normalizeCurvaABC } from '../../src/utils/countSchedule';
 
 type FilterType = 'todos' | 'divergencia' | 'nao_contado' | 'ok';
+type CurvaFilter = 'todas' | 'A' | 'B' | 'C';
 
-const FILTERS: { id: FilterType; label: string }[] = [
+const CLASSIFICATION_FILTERS: { id: FilterType; label: string }[] = [
   { id: 'todos', label: 'Todos' },
-  { id: 'divergencia', label: 'Divergência' },
-  { id: 'nao_contado', label: 'Não contados' },
+  { id: 'divergencia', label: 'Divergencia' },
+  { id: 'nao_contado', label: 'Nao contados' },
   { id: 'ok', label: 'OK' },
+];
+
+const CURVA_FILTERS: { id: CurvaFilter; label: string }[] = [
+  { id: 'todas', label: 'Todas' },
+  { id: 'A', label: 'A' },
+  { id: 'B', label: 'B' },
+  { id: 'C', label: 'C' },
 ];
 
 function normalizeSearchText(value: string): string {
@@ -34,7 +43,9 @@ function normalizeSearchText(value: string): string {
 export default function InventoryScreen() {
   const router = useRouter();
   const [search, setSearch] = useState('');
-  const [filter, setFilter] = useState<FilterType>('todos');
+  const [classificationFilter, setClassificationFilter] = useState<FilterType>('todos');
+  const [curvaFilter, setCurvaFilter] = useState<CurvaFilter>('todas');
+  const [showFilters, setShowFilters] = useState(false);
   const [showAddForm, setShowAddForm] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [items, setItems] = useState<StockItem[]>([]);
@@ -88,7 +99,12 @@ export default function InventoryScreen() {
           normalizeSearchText(i.descricao).includes(q)
       );
     }
-    switch (filter) {
+
+    if (curvaFilter !== 'todas') {
+      result = result.filter((item) => normalizeCurvaABC(item.curva_abc) === curvaFilter);
+    }
+
+    switch (classificationFilter) {
       case 'divergencia':
         result = result.filter((i) => {
           const c = countMap.get(i.codigo);
@@ -105,8 +121,16 @@ export default function InventoryScreen() {
         });
         break;
     }
+
     return result;
-  }, [items, search, filter, countMap]);
+  }, [items, search, curvaFilter, classificationFilter, countMap]);
+
+  const activeFilterCount = useMemo(() => {
+    let total = 0;
+    if (curvaFilter !== 'todas') total += 1;
+    if (classificationFilter !== 'todos') total += 1;
+    return total;
+  }, [curvaFilter, classificationFilter]);
 
   const parseNumber = (value: string): number => {
     const normalized = value.trim().replace(',', '.');
@@ -125,11 +149,16 @@ export default function InventoryScreen() {
     setNovoCustoAjuste('0');
   };
 
+  const resetFilters = () => {
+    setCurvaFilter('todas');
+    setClassificationFilter('todos');
+  };
+
   const handleCreateItem = () => {
     const codigo = novoCodigo.trim();
     const descricao = novaDescricao.trim();
     if (!codigo || !descricao) {
-      Alert.alert('Campos obrigatórios', 'Informe código e descrição do item.');
+      Alert.alert('Campos obrigatorios', 'Informe codigo e descricao do item.');
       return;
     }
 
@@ -149,7 +178,7 @@ export default function InventoryScreen() {
       loadData();
       Alert.alert('Item adicionado', `Item ${codigo} cadastrado com sucesso.`);
     } catch (e: any) {
-      Alert.alert('Erro ao cadastrar', e?.message ?? 'Não foi possível adicionar o item.');
+      Alert.alert('Erro ao cadastrar', e?.message ?? 'Nao foi possivel adicionar o item.');
     }
   };
 
@@ -182,7 +211,7 @@ export default function InventoryScreen() {
                 style={[styles.input, styles.inputHalf]}
                 value={novoCodigo}
                 onChangeText={setNovoCodigo}
-                placeholder="Código *"
+                placeholder="Codigo *"
                 placeholderTextColor={Colors.text.muted}
               />
               <TextInput
@@ -199,7 +228,7 @@ export default function InventoryScreen() {
               style={styles.input}
               value={novaDescricao}
               onChangeText={setNovaDescricao}
-              placeholder="Descrição *"
+              placeholder="Descricao *"
               placeholderTextColor={Colors.text.muted}
             />
             <View style={styles.formRow}>
@@ -216,7 +245,7 @@ export default function InventoryScreen() {
                 style={[styles.input, styles.inputHalf]}
                 value={novaLocalizacao}
                 onChangeText={setNovaLocalizacao}
-                placeholder="Localização"
+                placeholder="Localizacao"
                 placeholderTextColor={Colors.text.muted}
               />
             </View>
@@ -235,7 +264,7 @@ export default function InventoryScreen() {
                 style={[styles.input, styles.inputThird]}
                 value={novoEstoqueMinimo}
                 onChangeText={setNovoEstoqueMinimo}
-                placeholder="Estoque mín."
+                placeholder="Estoque min."
                 placeholderTextColor={Colors.text.muted}
                 keyboardType={Platform.OS === 'ios' ? 'decimal-pad' : 'numeric'}
               />
@@ -265,24 +294,40 @@ export default function InventoryScreen() {
           testID="inventory-search"
           value={search}
           onChangeText={setSearch}
-          placeholder="Digite código ou nome do item"
+          placeholder="Digite codigo ou nome do item"
         />
       </View>
 
-      <View style={styles.filterRow}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterContent}>
-          {FILTERS.map((f) => (
-            <TouchableOpacity
-              testID={`filter-${f.id}`}
-              key={f.id}
-              style={[styles.filterChip, filter === f.id && styles.filterChipActive]}
-              onPress={() => setFilter(f.id)}
-            >
-              <Text style={[styles.filterLabel, filter === f.id && styles.filterLabelActive]}>
-                {f.label}
+      <View style={styles.filterBar}>
+        <TouchableOpacity
+          testID="filters-toggle-btn"
+          style={[styles.filtersButton, activeFilterCount > 0 && styles.filtersButtonActive]}
+          onPress={() => setShowFilters(true)}
+        >
+          <Filter size={16} color={activeFilterCount > 0 ? '#fff' : Colors.text.primary} />
+          <Text style={[styles.filtersButtonText, activeFilterCount > 0 && styles.filtersButtonTextActive]}>
+            Filtros
+          </Text>
+          {activeFilterCount > 0 ? (
+            <View style={styles.filterCountBadge}>
+              <Text style={styles.filterCountText}>{activeFilterCount}</Text>
+            </View>
+          ) : null}
+        </TouchableOpacity>
+
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterSummaryContent}>
+          {curvaFilter !== 'todas' ? (
+            <View style={styles.summaryChip}>
+              <Text style={styles.summaryChipText}>Curva: {curvaFilter}</Text>
+            </View>
+          ) : null}
+          {classificationFilter !== 'todos' ? (
+            <View style={styles.summaryChip}>
+              <Text style={styles.summaryChipText}>
+        Classificacao: {CLASSIFICATION_FILTERS.find((f) => f.id === classificationFilter)?.label}
               </Text>
-            </TouchableOpacity>
-          ))}
+            </View>
+          ) : null}
         </ScrollView>
       </View>
 
@@ -325,6 +370,64 @@ export default function InventoryScreen() {
         }
         showsVerticalScrollIndicator={false}
       />
+
+      <Modal
+        visible={showFilters}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowFilters(false)}
+      >
+        <Pressable style={styles.modalOverlay} onPress={() => setShowFilters(false)}>
+          <Pressable style={styles.modalCard} onPress={() => undefined}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Filtros</Text>
+              <TouchableOpacity style={styles.closeModalBtn} onPress={() => setShowFilters(false)}>
+                <X size={18} color={Colors.text.muted} />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.modalSectionTitle}>Curva</Text>
+            <View style={styles.modalChipWrap}>
+              {CURVA_FILTERS.map((option) => (
+                <TouchableOpacity
+                  key={option.id}
+                  style={[styles.filterChip, curvaFilter === option.id && styles.filterChipActive]}
+                  onPress={() => setCurvaFilter(option.id)}
+                >
+                  <Text style={[styles.filterLabel, curvaFilter === option.id && styles.filterLabelActive]}>
+                    {option.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <Text style={styles.modalSectionTitle}>Classificacao</Text>
+            <View style={styles.modalChipWrap}>
+              {CLASSIFICATION_FILTERS.map((option) => (
+                <TouchableOpacity
+                  testID={`filter-${option.id}`}
+                  key={option.id}
+                  style={[styles.filterChip, classificationFilter === option.id && styles.filterChipActive]}
+                  onPress={() => setClassificationFilter(option.id)}
+                >
+                  <Text style={[styles.filterLabel, classificationFilter === option.id && styles.filterLabelActive]}>
+                    {option.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <View style={styles.modalActions}>
+              <TouchableOpacity style={styles.resetFiltersBtn} onPress={resetFilters}>
+                <Text style={styles.resetFiltersText}>Limpar filtros</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.applyFiltersBtn} onPress={() => setShowFilters(false)}>
+                <Text style={styles.applyFiltersText}>Aplicar</Text>
+              </TouchableOpacity>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -375,8 +478,101 @@ const styles = StyleSheet.create({
   },
   saveNewBtnText: { color: '#fff', fontSize: 14, fontWeight: '700' },
   searchWrap: { paddingHorizontal: 16, marginBottom: 10 },
-  filterRow: { marginBottom: 8 },
-  filterContent: { paddingHorizontal: 16, gap: 8 },
+  filterBar: { paddingHorizontal: 16, marginBottom: 8, gap: 10 },
+  filtersButton: {
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderWidth: 1,
+    borderColor: Colors.border.subtle,
+    backgroundColor: Colors.bg.secondary,
+  },
+  filtersButtonActive: {
+    backgroundColor: Colors.brand.primary,
+    borderColor: Colors.brand.primary,
+  },
+  filtersButtonText: {
+    color: Colors.text.primary,
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  filtersButtonTextActive: {
+    color: '#fff',
+  },
+  filterCountBadge: {
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: 'rgba(255,255,255,0.22)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 4,
+  },
+  filterCountText: {
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  filterSummaryContent: { gap: 8, paddingRight: 16 },
+  summaryChip: {
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    backgroundColor: Colors.bg.secondary,
+    borderWidth: 1,
+    borderColor: Colors.border.subtle,
+  },
+  summaryChipText: {
+    color: Colors.text.secondary,
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.65)',
+    justifyContent: 'flex-end',
+  },
+  modalCard: {
+    backgroundColor: Colors.bg.secondary,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 16,
+    gap: 14,
+    borderTopWidth: 1,
+    borderColor: Colors.border.subtle,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  modalTitle: {
+    color: Colors.text.primary,
+    fontSize: 18,
+    fontWeight: '800',
+  },
+  closeModalBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.bg.tertiary,
+  },
+  modalSectionTitle: {
+    color: Colors.text.primary,
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  modalChipWrap: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
   filterChip: {
     borderRadius: 20,
     paddingHorizontal: 14,
@@ -391,5 +587,38 @@ const styles = StyleSheet.create({
   },
   filterLabel: { fontSize: 13, fontWeight: '500', color: Colors.text.secondary },
   filterLabelActive: { color: Colors.brand.primary, fontWeight: '700' },
+  modalActions: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 6,
+  },
+  resetFiltersBtn: {
+    flex: 1,
+    height: 44,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: Colors.border.strong,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.bg.primary,
+  },
+  resetFiltersText: {
+    color: Colors.text.secondary,
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  applyFiltersBtn: {
+    flex: 1,
+    height: 44,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.brand.primary,
+  },
+  applyFiltersText: {
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: '800',
+  },
   listContent: { paddingHorizontal: 16, paddingBottom: 24 },
 });

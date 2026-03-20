@@ -15,8 +15,8 @@ type MenuItem = {
 const MENU_ITEMS: MenuItem[] = [
   { label: 'Dashboard', path: '/(tabs)/dashboard', icon: LayoutDashboard },
   { label: 'Estoque', path: '/(tabs)/inventory', icon: Package },
-  { label: 'Sessão de Contagem', path: '/(tabs)/sessions', icon: FolderOpen },
-  { label: 'Programação', path: '/(tabs)/schedule', icon: CalendarClock },
+  { label: 'Sessao de Contagem', path: '/(tabs)/sessions', icon: FolderOpen },
+  { label: 'Programacao', path: '/(tabs)/schedule', icon: CalendarClock },
   { label: 'Scanner', path: '/(tabs)/scan', icon: ScanLine },
   { label: 'Exportar', path: '/(tabs)/export', icon: Download },
 ];
@@ -60,11 +60,11 @@ export default function TabsLayout() {
 
   const currentTitle = useMemo(() => {
     const active = MENU_ITEMS.find((item) => pathname?.startsWith(item.path));
-    return active?.label ?? 'Ciclo de Inventário';
+    return active?.label ?? 'Ciclo de Inventario';
   }, [pathname]);
 
   const navigateTo = (path: MenuItem['path']) => {
-    router.push(path);
+    router.push(path as any);
     setMenuOpen(false);
   };
 
@@ -72,12 +72,12 @@ export default function TabsLayout() {
     const normalized = usernameInput.trim();
     saveUsername(normalized);
     setUsername(normalized);
-    Alert.alert('Nome salvo', normalized ? `Usuário: ${normalized}` : 'Nome de usuário removido.');
+    Alert.alert('Nome salvo', normalized ? `Usuario: ${normalized}` : 'Nome de usuario removido.');
   };
 
   return (
     <View style={styles.container} {...panResponder.panHandlers}>
-      <View style={[styles.topBar, { height: 66 + insets.top, paddingTop: insets.top + 8 }]}> 
+      <View style={[styles.topBar, { height: 66 + insets.top, paddingTop: insets.top + 8 }]}>
         <Pressable
           accessibilityLabel={menuOpen ? 'Fechar menu' : 'Abrir menu'}
           onPress={() => setMenuOpen((prev) => !prev)}
@@ -89,7 +89,7 @@ export default function TabsLayout() {
         <View style={styles.titleBlock}>
           <Text style={styles.title} numberOfLines={1}>{currentTitle}</Text>
           <Text style={styles.subtitle} numberOfLines={1}>
-            {username ? `Usuário: ${username}` : 'Arraste para baixo para abrir o menu'}
+            {username ? `Usuario: ${username}` : 'Arraste para baixo para abrir o menu'}
           </Text>
         </View>
 
@@ -104,7 +104,7 @@ export default function TabsLayout() {
               <TextInput
                 value={usernameInput}
                 onChangeText={setUsernameInput}
-                placeholder="Nome do usuário"
+                placeholder="Nome do usuario"
                 placeholderTextColor={Colors.text.muted}
                 style={styles.userInput}
               />
@@ -144,8 +144,8 @@ export default function TabsLayout() {
         >
           <Tabs.Screen name="dashboard" options={{ title: 'Dashboard' }} />
           <Tabs.Screen name="inventory" options={{ title: 'Estoque' }} />
-          <Tabs.Screen name="sessions" options={{ title: 'Sessão de Contagem' }} />
-          <Tabs.Screen name="schedule" options={{ title: 'Programação' }} />
+          <Tabs.Screen name="sessions" options={{ title: 'Sessao de Contagem' }} />
+          <Tabs.Screen name="schedule" options={{ title: 'Programacao' }} />
           <Tabs.Screen name="scan" options={{ title: 'Scanner' }} />
           <Tabs.Screen name="export" options={{ title: 'Exportar' }} />
         </Tabs>

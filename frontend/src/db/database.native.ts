@@ -1,7 +1,27 @@
 import * as SQLite from 'expo-sqlite';
+import type { DatabaseAdapter, DbRunResult } from './database.types';
 
-// Auto-open and initialize on module load (fixes direct URL navigation)
-export const db: SQLite.SQLiteDatabase = SQLite.openDatabaseSync('estoqueaudit.db');
+const sqliteDb = SQLite.openDatabaseSync('estoqueaudit.db');
+
+const dbAdapter: DatabaseAdapter = {
+  execSync(sql: string): void {
+    sqliteDb.execSync(sql);
+  },
+  withTransactionSync(fn: () => void): void {
+    sqliteDb.withTransactionSync(fn);
+  },
+  runSync(sql: string, args: unknown[] = []): DbRunResult {
+    return sqliteDb.runSync(sql, args as SQLite.SQLiteBindParams);
+  },
+  getFirstSync<T>(sql: string, args: unknown[] = []): T | null {
+    return sqliteDb.getFirstSync<T>(sql, args as SQLite.SQLiteBindParams);
+  },
+  getAllSync<T>(sql: string, args: unknown[] = []): T[] {
+    return sqliteDb.getAllSync<T>(sql, args as SQLite.SQLiteBindParams);
+  },
+};
+
+export const db: DatabaseAdapter = dbAdapter;
 
 export function uuid(): string {
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
@@ -10,11 +30,11 @@ export function uuid(): string {
   });
 }
 
-export function openDatabase(): SQLite.SQLiteDatabase {
+export function openDatabase(): DatabaseAdapter {
   return db;
 }
 
-export function initDatabase(database: SQLite.SQLiteDatabase): void {
+export function initDatabase(database: DatabaseAdapter): void {
   database.execSync(`
     CREATE TABLE IF NOT EXISTS stock_items (
       id TEXT PRIMARY KEY,
@@ -35,7 +55,6 @@ export function initDatabase(database: SQLite.SQLiteDatabase): void {
     )
   `);
 
-  // Migration for existing databases created before custo_ajuste column.
   const itemCols = database.getAllSync<{ name: string }>(`PRAGMA table_info(stock_items)`);
   const hasAdjustmentCost = itemCols.some((col) => col.name === 'custo_ajuste');
   if (!hasAdjustmentCost) {
@@ -96,25 +115,25 @@ export function initDatabase(database: SQLite.SQLiteDatabase): void {
   database.execSync(`CREATE INDEX IF NOT EXISTS idx_counts_codigo ON count_entries(codigo)`);
 }
 
-export function seedDemoData(database: SQLite.SQLiteDatabase): void {
+export function seedDemoData(database: DatabaseAdapter): void {
   const count = database.getFirstSync<{ count: number }>('SELECT COUNT(*) as count FROM stock_items');
   if (count && count.count > 0) return;
 
   const now = new Date().toISOString();
 
   const items = [
-    { id: uuid(), codigo: '7891234567890', descricao: 'RESINA PP HOMOPOLÍMERO', categoria: 'MATÉRIA-PRIMA', unidade: 'KG', localizacao: 'A-01', saldo_sistema: 1200, estoque_minimo: 500 },
+    { id: uuid(), codigo: '7891234567890', descricao: 'RESINA PP HOMOPOLIMERO', categoria: 'MATERIA-PRIMA', unidade: 'KG', localizacao: 'A-01', saldo_sistema: 1200, estoque_minimo: 500 },
     { id: uuid(), codigo: '7891234567891', descricao: 'MASTER AZUL CONCENTRADO', categoria: 'ADITIVOS', unidade: 'KG', localizacao: 'A-02', saldo_sistema: 340, estoque_minimo: 100 },
     { id: uuid(), codigo: '7891234567892', descricao: 'ADITIVO ANTIOXIDANTE UV', categoria: 'ADITIVOS', unidade: 'KG', localizacao: 'A-03', saldo_sistema: 80, estoque_minimo: 50 },
     { id: uuid(), codigo: '7891234567893', descricao: 'PIGMENTO VERDE INDUSTRIAL', categoria: 'PIGMENTOS', unidade: 'KG', localizacao: 'B-01', saldo_sistema: 520, estoque_minimo: 200 },
     { id: uuid(), codigo: '7891234567894', descricao: 'EMBALAGEM SACO 25KG', categoria: 'EMBALAGENS', unidade: 'UN', localizacao: 'C-01', saldo_sistema: 3500, estoque_minimo: 1000 },
-    { id: uuid(), codigo: '7891234567895', descricao: 'CAIXA PAPELÃO 40X60', categoria: 'EMBALAGENS', unidade: 'UN', localizacao: 'C-02', saldo_sistema: 1800, estoque_minimo: 500 },
+    { id: uuid(), codigo: '7891234567895', descricao: 'CAIXA PAPELAO 40X60', categoria: 'EMBALAGENS', unidade: 'UN', localizacao: 'C-02', saldo_sistema: 1800, estoque_minimo: 500 },
     { id: uuid(), codigo: '7891234567896', descricao: 'FITA ADESIVA 45MM MARROM', categoria: 'EMBALAGENS', unidade: 'RL', localizacao: 'C-03', saldo_sistema: 200, estoque_minimo: 50 },
-    { id: uuid(), codigo: '7891234567897', descricao: 'PALLET PLÁSTICO PBR', categoria: 'EQUIPAMENTOS', unidade: 'UN', localizacao: 'D-01', saldo_sistema: 45, estoque_minimo: 20 },
-    { id: uuid(), codigo: '7891234567898', descricao: 'LUVA NITRÍLICA P', categoria: 'EPI', unidade: 'PAR', localizacao: 'E-01', saldo_sistema: 600, estoque_minimo: 200 },
-    { id: uuid(), codigo: '7891234567899', descricao: 'ÓCULOS PROTEÇÃO TRANSPARENTE', categoria: 'EPI', unidade: 'UN', localizacao: 'E-02', saldo_sistema: 120, estoque_minimo: 40 },
-    { id: uuid(), codigo: '7891234567900', descricao: 'CAPACETE SEGURANÇA AMARELO', categoria: 'EPI', unidade: 'UN', localizacao: 'E-03', saldo_sistema: 35, estoque_minimo: 15 },
-    { id: uuid(), codigo: '7891234567901', descricao: 'TALCO INDUSTRIAL 1KG', categoria: 'MATÉRIA-PRIMA', unidade: 'KG', localizacao: 'A-04', saldo_sistema: 450, estoque_minimo: 150 },
+    { id: uuid(), codigo: '7891234567897', descricao: 'PALLET PLASTICO PBR', categoria: 'EQUIPAMENTOS', unidade: 'UN', localizacao: 'D-01', saldo_sistema: 45, estoque_minimo: 20 },
+    { id: uuid(), codigo: '7891234567898', descricao: 'LUVA NITRILICA P', categoria: 'EPI', unidade: 'PAR', localizacao: 'E-01', saldo_sistema: 600, estoque_minimo: 200 },
+    { id: uuid(), codigo: '7891234567899', descricao: 'OCULOS PROTECAO TRANSPARENTE', categoria: 'EPI', unidade: 'UN', localizacao: 'E-02', saldo_sistema: 120, estoque_minimo: 40 },
+    { id: uuid(), codigo: '7891234567900', descricao: 'CAPACETE SEGURANCA AMARELO', categoria: 'EPI', unidade: 'UN', localizacao: 'E-03', saldo_sistema: 35, estoque_minimo: 15 },
+    { id: uuid(), codigo: '7891234567901', descricao: 'TALCO INDUSTRIAL 1KG', categoria: 'MATERIA-PRIMA', unidade: 'KG', localizacao: 'A-04', saldo_sistema: 450, estoque_minimo: 150 },
   ];
 
   database.withTransactionSync(() => {
@@ -129,7 +148,6 @@ export function seedDemoData(database: SQLite.SQLiteDatabase): void {
     }
   });
 
-  // Create initial session
   const sessionId = uuid();
   database.runSync(
     `INSERT OR IGNORE INTO inventory_sessions (id, nome, responsavel, status, data_inicio, created_at) 
@@ -137,13 +155,12 @@ export function seedDemoData(database: SQLite.SQLiteDatabase): void {
     [sessionId, 'Contagem Geral', 'Operador', 'aberta', now, now]
   );
 
-  // Demo counts
   const counts = [
-    { id: uuid(), session_id: sessionId, codigo: '7891234567890', descricao: 'RESINA PP HOMOPOLÍMERO', saldo_sistema: 1200, quantidade_contada: 1185, diferenca: -15, localizacao: 'A-01', escaneado: 1 },
+    { id: uuid(), session_id: sessionId, codigo: '7891234567890', descricao: 'RESINA PP HOMOPOLIMERO', saldo_sistema: 1200, quantidade_contada: 1185, diferenca: -15, localizacao: 'A-01', escaneado: 1 },
     { id: uuid(), session_id: sessionId, codigo: '7891234567891', descricao: 'MASTER AZUL CONCENTRADO', saldo_sistema: 340, quantidade_contada: 340, diferenca: 0, localizacao: 'A-02', escaneado: 1 },
     { id: uuid(), session_id: sessionId, codigo: '7891234567892', descricao: 'ADITIVO ANTIOXIDANTE UV', saldo_sistema: 80, quantidade_contada: 92, diferenca: 12, localizacao: 'A-03', escaneado: 1 },
     { id: uuid(), session_id: sessionId, codigo: '7891234567894', descricao: 'EMBALAGEM SACO 25KG', saldo_sistema: 3500, quantidade_contada: 3420, diferenca: -80, localizacao: 'C-01', escaneado: 1 },
-    { id: uuid(), session_id: sessionId, codigo: '7891234567898', descricao: 'LUVA NITRÍLICA P', saldo_sistema: 600, quantidade_contada: 612, diferenca: 12, localizacao: 'E-01', escaneado: 0 },
+    { id: uuid(), session_id: sessionId, codigo: '7891234567898', descricao: 'LUVA NITRILICA P', saldo_sistema: 600, quantidade_contada: 612, diferenca: 12, localizacao: 'E-01', escaneado: 0 },
   ];
 
   database.withTransactionSync(() => {

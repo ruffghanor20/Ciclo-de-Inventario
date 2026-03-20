@@ -1,21 +1,20 @@
 {
   "expo": {
-    "name": "Ciclo de Inventário",
+    "name": "Ciclo de Inventario",
     "slug": "estoqueaudit",
     "version": "2.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "estoqueaudit",
     "userInterfaceStyle": "dark",
-    "newArchEnabled": true,
     "ios": {
       "bundleIdentifier": "com.ruffghanor20.estoqueaudit",
       "supportsTablet": true,
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
-        "NSCameraUsageDescription": "Escanear códigos de barras do estoque.",
-        "NSPhotoLibraryUsageDescription": "Salvar relatórios exportados.",
-        "NSPhotoLibraryAddUsageDescription": "Salvar relatórios de contagem."
+        "NSCameraUsageDescription": "Escanear codigos de barras e ler textos de etiquetas do estoque.",
+        "NSPhotoLibraryUsageDescription": "Salvar relatorios exportados.",
+        "NSPhotoLibraryAddUsageDescription": "Salvar relatorios de contagem."
       }
     },
     "android": {
@@ -24,7 +23,6 @@
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#09090B"
       },
-      "edgeToEdgeEnabled": true,
       "permissions": [
         "android.permission.CAMERA",
         "android.permission.READ_EXTERNAL_STORAGE",
@@ -38,11 +36,12 @@
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
+      "expo-dev-client",
       "expo-router",
       [
         "expo-camera",
         {
-          "cameraPermission": "Escanear códigos de barras para identificar itens do estoque."
+          "cameraPermission": "Escanear codigos de barras e capturar textos de etiquetas para identificar itens do estoque."
         }
       ],
       "expo-sqlite",
@@ -54,7 +53,11 @@
           "resizeMode": "contain",
           "backgroundColor": "#09090B"
         }
-      ]
+      ],
+      "expo-font",
+      "expo-image",
+      "expo-sharing",
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true

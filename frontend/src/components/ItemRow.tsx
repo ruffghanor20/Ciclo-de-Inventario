@@ -24,7 +24,6 @@ export function ItemRow({
   categoria,
   localizacao,
   saldo,
-  contado,
   diferenca,
   dataContado,
   curvaAbc,
@@ -32,24 +31,23 @@ export function ItemRow({
   onPress,
   testID,
 }: ItemRowProps) {
-  const hasDivergence = diferenca !== null && diferenca !== undefined && diferenca !== 0;
   const badgeColor =
     diferenca === null || diferenca === undefined
       ? Colors.text.muted
       : diferenca === 0
-      ? Colors.status.ok
-      : diferenca < 0
-      ? Colors.status.falta
-      : Colors.status.diferenca;
+        ? Colors.status.ok
+        : diferenca < 0
+          ? Colors.status.falta
+          : Colors.status.diferenca;
 
   const badgeLabel =
     diferenca === null || diferenca === undefined
-      ? '—'
+      ? '-'
       : diferenca === 0
-      ? 'OK'
-      : diferenca < 0
-      ? `${diferenca}`
-      : `+${diferenca}`;
+        ? 'OK'
+        : diferenca < 0
+          ? `${diferenca}`
+          : `+${diferenca}`;
 
   return (
     <TouchableOpacity
@@ -75,14 +73,14 @@ export function ItemRow({
         </View>
         <View style={styles.scheduleRow}>
           <Text style={styles.scheduleText}>Contado: <Text style={styles.scheduleValue}>{dataContado ?? '-'}</Text></Text>
-          <Text style={styles.scheduleText}>Curva-ABC: <Text style={styles.scheduleValue}>{curvaAbc ?? 'C'}</Text></Text>
-          <Text style={styles.scheduleText}>Próx.: <Text style={styles.scheduleValue}>{proximaContagem ?? '-'}</Text></Text>
+          <Text style={styles.scheduleText}>Curva ABC: <Text style={styles.scheduleValue}>{curvaAbc ?? 'C'}</Text></Text>
+          <Text style={styles.scheduleText}>Prox.: <Text style={styles.scheduleValue}>{proximaContagem ?? '-'}</Text></Text>
         </View>
       </View>
       <View style={styles.right}>
-        {saldo !== undefined && (
+        {saldo !== undefined ? (
           <Text style={styles.saldo}>Saldo: {saldo}</Text>
-        )}
+        ) : null}
         <View style={[styles.badge, { backgroundColor: badgeColor + '22', borderColor: badgeColor + '60' }]}>
           <Text style={[styles.badgeText, { color: badgeColor }]}>{badgeLabel}</Text>
         </View>

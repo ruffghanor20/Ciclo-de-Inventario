@@ -158,7 +158,7 @@ export async function importItemsFromXLSX(): Promise<ImportXlsxSummary | null> {
   }
 
   const file = picked.assets[0];
-  let workbook: XLSX.WorkBook;
+  let workbook: ReturnType<typeof XLSX.read>;
 
   try {
     const webFile = (file as { file?: File }).file;

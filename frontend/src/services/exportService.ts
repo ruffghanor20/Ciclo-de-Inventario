@@ -41,7 +41,7 @@ function getResponsibleName(session: Session): string {
 
 export async function exportCSV(entries: CountEntry[], session: Session): Promise<void> {
   const responsavel = getResponsibleName(session);
-  const header = ['Código', 'Descrição', 'Saldo Sistema', 'Contado', 'Diferença', 'Custo do Ajuste', 'Localização', 'Observação', 'Responsável', 'Data/Hora'];
+  const header = ['Codigo', 'Descricao', 'Saldo Sistema', 'Contado', 'Diferenca', 'Custo do Ajuste', 'Localizacao', 'Observacao', 'Responsavel', 'Data/Hora'];
   const rows = entries.map((e) => [
     e.codigo,
     e.descricao,
@@ -76,7 +76,7 @@ export async function exportCSV(entries: CountEntry[], session: Session): Promis
 
   const baseDir = FileSystem.cacheDirectory ?? FileSystem.documentDirectory;
   if (!baseDir) {
-    throw new Error('Não foi possível acessar diretório para exportar CSV.');
+    throw new Error('Nao foi possivel acessar diretorio para exportar CSV.');
   }
 
   const fileUri = `${baseDir}${filename}`;
@@ -101,6 +101,7 @@ export async function exportPDF(entries: CountEntry[], session: Session): Promis
     falta: entries.filter((e) => e.diferenca < 0).length,
     diferenca: entries.filter((e) => e.diferenca > 0).length,
   };
+  const totalAdjustmentCost = entries.reduce((sum, entry) => sum + getAdjustmentCost(entry), 0);
 
   const rows = entries
     .map(
@@ -120,11 +121,18 @@ export async function exportPDF(entries: CountEntry[], session: Session): Promis
     )
     .join('');
 
+  const totalRow = `
+    <tr>
+      <td colspan="5" style="text-align:right; font-weight:bold; background:#eef2ff;">Total Custo Ajuste</td>
+      <td style="text-align:center; font-weight:bold; background:#eef2ff;">${formatBRL(totalAdjustmentCost)}</td>
+      <td colspan="2" style="background:#eef2ff;"></td>
+    </tr>`;
+
   const html = `<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
-  <title>Relatório Ciclo de Inventário</title>
+  <title>Relatorio Ciclo de Inventario</title>
   <style>
     * { margin:0; padding:0; box-sizing:border-box; }
     body { font-family:Arial,sans-serif; font-size:11px; color:#1a1a1a; padding:24px; }
@@ -145,24 +153,24 @@ export async function exportPDF(entries: CountEntry[], session: Session): Promis
 </head>
 <body>
   <div class="header">
-    <h1>Relatório de Contagem de Estoque</h1>
-    <p>Sessão: <b>${session.nome}</b> | Responsável: ${responsavel} | Gerado em: ${new Date().toLocaleString('pt-BR')}</p>
+    <h1>Relatorio de Contagem de Estoque</h1>
+    <p>Sessao: <b>${session.nome}</b> | Responsavel: ${responsavel} | Gerado em: ${new Date().toLocaleString('pt-BR')}</p>
   </div>
   <div class="stats">
     <div class="stat"><div class="stat-value total">${stats.total}</div><div class="stat-label">CONTADOS</div></div>
     <div class="stat"><div class="stat-value ok">${stats.ok}</div><div class="stat-label">OK</div></div>
     <div class="stat"><div class="stat-value falta">${stats.falta}</div><div class="stat-label">FALTA</div></div>
-    <div class="stat"><div class="stat-value diferenca">${stats.diferenca}</div><div class="stat-label">DIFERENÇA</div></div>
+    <div class="stat"><div class="stat-value diferenca">${stats.diferenca}</div><div class="stat-label">DIFERENCA</div></div>
   </div>
   <table>
     <thead>
       <tr>
-        <th>Código</th><th>Descrição</th><th>Saldo Sist.</th><th>Contado</th><th>Diferença</th><th>Custo Ajuste</th><th>Local.</th><th>Obs.</th>
+        <th>Codigo</th><th>Descricao</th><th>Saldo Sist.</th><th>Contado</th><th>Diferenca</th><th>Custo Ajuste</th><th>Local.</th><th>Obs.</th>
       </tr>
     </thead>
-    <tbody>${rows}</tbody>
+    <tbody>${rows}${totalRow}</tbody>
   </table>
-  <div class="footer">Ciclo de Inventário · ${entries.length} itens · Sessão iniciada em ${new Date(session.data_inicio).toLocaleString('pt-BR')}</div>
+  <div class="footer">Ciclo de Inventario · ${entries.length} itens · Sessao iniciada em ${new Date(session.data_inicio).toLocaleString('pt-BR')}</div>
 </body>
 </html>`;
 
@@ -171,7 +179,7 @@ export async function exportPDF(entries: CountEntry[], session: Session): Promis
   if (await Sharing.isAvailableAsync()) {
     await Sharing.shareAsync(uri, {
       mimeType: 'application/pdf',
-      dialogTitle: `Relatório ${session.nome}`,
+      dialogTitle: `Relatorio ${session.nome}`,
       UTI: 'com.adobe.pdf',
     });
   }

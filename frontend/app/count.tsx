@@ -207,7 +207,7 @@ export default function CountScreen() {
               style={styles.obsInput}
               value={observacao}
               onChangeText={setObservacao}
-              placeholder="Ex: Embalagem danificada, material em trânsito..."
+              placeholder="Ex: Embalagem danificada, material em transito..."
               placeholderTextColor={Colors.text.muted}
               multiline
               numberOfLines={3}
