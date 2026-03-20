@@ -1,4 +1,5 @@
-# Ciclo de Inventario demo
+# Ciclo de Inventario
+
 Aplicativo mobile/web para contagem ciclica de estoque com leitura de codigo de barras, contagem manual, controle por sessao, programacao por curva ABC e exportacao de relatorios.
 
 O projeto foi construido com Expo + React Native e usa `expo-router` para navegacao. Em Android/iOS os dados ficam em SQLite local; na web o app roda com uma base em memoria para preview.
@@ -182,4 +183,4 @@ O repositorio possui um arquivo `.env` com configuracoes de desenvolvimento do E
 
 ## Licenca
 
-uso interno.
+Defina a licenca do projeto conforme a necessidade do time.
