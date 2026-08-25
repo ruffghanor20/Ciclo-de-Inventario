@@ -34,11 +34,49 @@ export interface BlendCount {
 
 export type NewBlendCount = Omit<BlendCount, 'id' | 'created_at'>;
 
+export function ensureBlendSchema(): void {
+  db.execSync(`
+    CREATE TABLE IF NOT EXISTS blend_materials (
+      id TEXT PRIMARY KEY,
+      codigo TEXT NOT NULL,
+      descricao TEXT NOT NULL,
+      tipo TEXT NOT NULL,
+      created_at TEXT NOT NULL
+    )
+  `);
+  db.execSync(`
+    CREATE TABLE IF NOT EXISTS blend_counts (
+      id TEXT PRIMARY KEY,
+      session_id TEXT NOT NULL,
+      deposito TEXT NOT NULL,
+      maquina TEXT NOT NULL,
+      tipo_maquina TEXT NOT NULL,
+      modo TEXT NOT NULL,
+      blend_codigo TEXT DEFAULT '',
+      blend_kg REAL DEFAULT 0,
+      comp1_codigo TEXT DEFAULT '',
+      comp1_kg REAL DEFAULT 0,
+      comp2_codigo TEXT DEFAULT '',
+      comp2_kg REAL DEFAULT 0,
+      comp3_codigo TEXT DEFAULT '',
+      comp3_kg REAL DEFAULT 0,
+      foto_uri TEXT DEFAULT '',
+      observacao TEXT DEFAULT '',
+      responsavel TEXT DEFAULT '',
+      created_at TEXT NOT NULL
+    )
+  `);
+  db.execSync(`CREATE INDEX IF NOT EXISTS idx_blend_material_codigo ON blend_materials(codigo)`);
+  db.execSync(`CREATE INDEX IF NOT EXISTS idx_blend_count_session ON blend_counts(session_id)`);
+  db.execSync(`CREATE INDEX IF NOT EXISTS idx_blend_count_maquina ON blend_counts(maquina)`);
+}
+
 export function normalizeMaterialCode(value: unknown): string {
   return String(value ?? '').trim().toUpperCase();
 }
 
 export function upsertBlendMaterial(codigoRaw: unknown, descricaoRaw: unknown, tipo: MaterialTipo): BlendMaterial | null {
+  ensureBlendSchema();
   const codigo = normalizeMaterialCode(codigoRaw);
   if (!codigo) return null;
   const descricao = String(descricaoRaw ?? '').trim() || `Material ${codigo}`;
@@ -60,11 +98,14 @@ export function upsertBlendMaterial(codigoRaw: unknown, descricaoRaw: unknown, t
 }
 
 export function searchBlendMaterials(query: string, tipo: MaterialTipo, limit = 8): BlendMaterial[] {
+  ensureBlendSchema();
   const q = normalizeMaterialCode(query);
-  if (!q) return db.getAllSync<BlendMaterial>(
-    `SELECT * FROM blend_materials WHERE tipo = ? ORDER BY codigo ASC LIMIT ${limit}`,
-    [tipo]
-  );
+  if (!q) {
+    return db.getAllSync<BlendMaterial>(
+      `SELECT * FROM blend_materials WHERE tipo = ? ORDER BY codigo ASC LIMIT ${limit}`,
+      [tipo]
+    );
+  }
   return db.getAllSync<BlendMaterial>(
     `SELECT * FROM blend_materials WHERE tipo = ? AND (UPPER(codigo) LIKE ? OR UPPER(descricao) LIKE ?) ORDER BY codigo ASC LIMIT ${limit}`,
     [tipo, `%${q}%`, `%${q}%`]
@@ -72,10 +113,12 @@ export function searchBlendMaterials(query: string, tipo: MaterialTipo, limit = 
 }
 
 export function getBlendMaterialCount(): number {
+  ensureBlendSchema();
   return db.getFirstSync<{ count: number }>('SELECT COUNT(*) as count FROM blend_materials')?.count ?? 0;
 }
 
 export function createBlendCount(payload: NewBlendCount): BlendCount {
+  ensureBlendSchema();
   const row: BlendCount = { id: uuid(), created_at: new Date().toISOString(), ...payload };
   db.runSync(
     `INSERT INTO blend_counts
@@ -94,6 +137,7 @@ export function createBlendCount(payload: NewBlendCount): BlendCount {
 }
 
 export function getBlendCountsBySession(sessionId: string): BlendCount[] {
+  ensureBlendSchema();
   return db.getAllSync<BlendCount>(
     `SELECT * FROM blend_counts WHERE session_id = ? ORDER BY created_at DESC`,
     [sessionId]
@@ -101,6 +145,7 @@ export function getBlendCountsBySession(sessionId: string): BlendCount[] {
 }
 
 export function getBlendCountsByMachine(sessionId: string, maquina: string): BlendCount[] {
+  ensureBlendSchema();
   return db.getAllSync<BlendCount>(
     `SELECT * FROM blend_counts WHERE session_id = ? AND maquina = ? ORDER BY created_at DESC`,
     [sessionId, maquina]
@@ -108,5 +153,6 @@ export function getBlendCountsByMachine(sessionId: string, maquina: string): Ble
 }
 
 export function deleteBlendCount(id: string): void {
+  ensureBlendSchema();
   db.runSync(`DELETE FROM blend_counts WHERE id = ?`, [id]);
 }
