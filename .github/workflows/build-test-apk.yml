@@ -63,3 +63,5 @@ jobs:
           path: frontend/EstoqueAudit-Pro-Blend-Test-v2.0.0.apk
           if-no-files-found: error
           retention-days: 14
+
+# rebuild requested 2026-08-25
