@@ -13,6 +13,8 @@ jobs:
   build-apk:
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    env:
+      CI: '1'
 
     defaults:
       run:
@@ -37,13 +39,13 @@ jobs:
         uses: android-actions/setup-android@v3
 
       - name: Install dependencies
-        run: npm install --no-audit --no-fund
+        run: yarn install --no-lockfile --non-interactive
 
       - name: TypeScript check
         run: npx tsc --noEmit
 
       - name: Generate Android project
-        run: npx expo prebuild --platform android --clean --non-interactive
+        run: npx expo prebuild --platform android --clean
 
       - name: Build debug APK
         run: |
