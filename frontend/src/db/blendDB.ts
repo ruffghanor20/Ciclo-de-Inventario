@@ -152,6 +152,16 @@ export function getBlendCountsByMachine(sessionId: string, maquina: string): Ble
   );
 }
 
+export function clearBlendPhotoUris(ids: string[]): void {
+  ensureBlendSchema();
+  if (!ids.length) return;
+  db.withTransactionSync(() => {
+    for (const id of ids) {
+      db.runSync(`UPDATE blend_counts SET foto_uri = '' WHERE id = ?`, [id]);
+    }
+  });
+}
+
 export function deleteBlendCount(id: string): void {
   ensureBlendSchema();
   db.runSync(`DELETE FROM blend_counts WHERE id = ?`, [id]);
