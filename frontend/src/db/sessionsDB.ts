@@ -1,4 +1,5 @@
 import { db, uuid } from './database';
+import { ensureBlendSchema } from './blendDB';
 
 export interface Session {
   id: string;
@@ -99,6 +100,7 @@ export function loadSession(id: string): Session | null {
 }
 
 export function deleteSession(id: string): void {
+  ensureBlendSchema();
   db.withTransactionSync(() => {
     db.runSync(`DELETE FROM count_entries WHERE session_id = ?`, [id]);
     db.runSync(`DELETE FROM blend_counts WHERE session_id = ?`, [id]);
