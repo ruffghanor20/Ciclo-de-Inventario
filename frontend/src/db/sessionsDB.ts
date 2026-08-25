@@ -4,6 +4,7 @@ export interface Session {
   id: string;
   nome: string;
   responsavel: string;
+  deposito: string;
   status: string;
   data_inicio: string;
   data_fim: string | null;
@@ -14,10 +15,23 @@ export interface SessionWithStats extends Session {
   total_contagens: number;
 }
 
+function ensureSessionSchema(): void {
+  const cols = db.getAllSync<{ name: string }>(`PRAGMA table_info(inventory_sessions)`);
+  if (cols.length > 0 && !cols.some((col) => col.name === 'deposito')) {
+    db.execSync(`ALTER TABLE inventory_sessions ADD COLUMN deposito TEXT DEFAULT '1023'`);
+  }
+}
+
+function normalizeSession(session: Session | null): Session | null {
+  if (!session) return null;
+  return { ...session, deposito: session.deposito || '1023' };
+}
+
 export function getAllSessions(): Session[] {
+  ensureSessionSchema();
   return db.getAllSync<Session>(
     `SELECT * FROM inventory_sessions ORDER BY created_at DESC`
-  );
+  ).map((session) => normalizeSession(session)!);
 }
 
 export function getAllSessionsWithStats(): SessionWithStats[] {
@@ -32,23 +46,26 @@ export function getAllSessionsWithStats(): SessionWithStats[] {
 }
 
 export function getOpenSession(): Session | null {
-  return db.getFirstSync<Session>(
+  ensureSessionSchema();
+  return normalizeSession(db.getFirstSync<Session>(
     `SELECT * FROM inventory_sessions WHERE status = 'aberta' ORDER BY created_at DESC`
-  ) ?? null;
+  ) ?? null);
 }
 
 export function getSessionById(id: string): Session | null {
-  return db.getFirstSync<Session>(
+  ensureSessionSchema();
+  return normalizeSession(db.getFirstSync<Session>(
     `SELECT * FROM inventory_sessions WHERE id = ?`, [id]
-  ) ?? null;
+  ) ?? null);
 }
 
-export function createSession(nome: string, responsavel: string = 'Operador'): Session {
+export function createSession(nome: string, responsavel: string = 'Operador', deposito: '1020' | '1023' = '1023'): Session {
+  ensureSessionSchema();
   const now = new Date().toISOString();
   const id = uuid();
   db.runSync(
-    `INSERT INTO inventory_sessions (id, nome, responsavel, status, data_inicio, created_at) VALUES (?, ?, ?, 'aberta', ?, ?)`,
-    [id, nome, responsavel, now, now]
+    `INSERT INTO inventory_sessions (id, nome, responsavel, deposito, status, data_inicio, created_at) VALUES (?, ?, ?, ?, 'aberta', ?, ?)`,
+    [id, nome, responsavel, deposito, now, now]
   );
   return getSessionById(id)!;
 }
@@ -84,6 +101,7 @@ export function loadSession(id: string): Session | null {
 export function deleteSession(id: string): void {
   db.withTransactionSync(() => {
     db.runSync(`DELETE FROM count_entries WHERE session_id = ?`, [id]);
+    db.runSync(`DELETE FROM blend_counts WHERE session_id = ?`, [id]);
     db.runSync(`DELETE FROM inventory_sessions WHERE id = ?`, [id]);
   });
 }
