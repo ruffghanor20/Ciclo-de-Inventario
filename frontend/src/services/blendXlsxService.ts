@@ -40,6 +40,24 @@ function parseTipo(value: unknown, fallback: MaterialTipo): MaterialTipo {
   return fallback;
 }
 
+async function readWorkbook(file: DocumentPicker.DocumentPickerAsset): Promise<ReturnType<typeof XLSX.read>> {
+  try {
+    const webFile = (file as { file?: File }).file;
+    const buffer = webFile
+      ? await webFile.arrayBuffer()
+      : await (await fetch(file.uri)).arrayBuffer();
+    return XLSX.read(buffer, { type: 'array' });
+  } catch {
+    const base64Raw = await FileSystem.readAsStringAsync(file.uri, {
+      encoding: FileSystem.EncodingType.Base64,
+    });
+    const base64 = base64Raw.includes(',')
+      ? base64Raw.substring(base64Raw.indexOf(',') + 1)
+      : base64Raw;
+    return XLSX.read(base64, { type: 'base64' });
+  }
+}
+
 export async function importBlendBaseXLSX(): Promise<BlendImportSummary | null> {
   const picked = await DocumentPicker.getDocumentAsync({
     type: [
@@ -53,10 +71,7 @@ export async function importBlendBaseXLSX(): Promise<BlendImportSummary | null> 
   if (picked.canceled || !picked.assets?.length) return null;
 
   const file = picked.assets[0];
-  const webFile = (file as { file?: File }).file;
-  const buffer = webFile ? await webFile.arrayBuffer() : await (await fetch(file.uri)).arrayBuffer();
-  const workbook = XLSX.read(buffer, { type: 'array' });
-
+  const workbook = await readWorkbook(file);
   let createdOrUpdated = 0;
   let ignored = 0;
 
