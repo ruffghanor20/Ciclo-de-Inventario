@@ -1,10 +1,10 @@
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
-import { Platform } from 'react-native';
+import { Alert, Platform } from 'react-native';
 import ExcelJS from 'exceljs';
 import * as XLSX from 'xlsx';
-import { BlendCount, MaterialTipo, upsertBlendMaterial } from '../db/blendDB';
+import { BlendCount, MaterialTipo, clearBlendPhotoUris, upsertBlendMaterial } from '../db/blendDB';
 import { Session } from '../db/sessionsDB';
 
 export interface BlendImportSummary {
@@ -256,6 +256,38 @@ async function buildBlendWorkbook(entries: BlendCount[], session: Session): Prom
   return workbook;
 }
 
+async function removeLocalPhotos(entries: BlendCount[]): Promise<void> {
+  const withPhotos = entries.filter((entry) => Boolean(entry.foto_uri));
+  for (const entry of withPhotos) {
+    const uri = entry.foto_uri;
+    if (uri.startsWith('file://')) {
+      try {
+        await FileSystem.deleteAsync(uri, { idempotent: true });
+      } catch {
+        // O vínculo local será removido mesmo que o cache já tenha sido limpo pelo sistema.
+      }
+    }
+  }
+  clearBlendPhotoUris(withPhotos.map((entry) => entry.id));
+}
+
+function offerPhotoCleanup(entries: BlendCount[]): void {
+  const total = entries.filter((entry) => Boolean(entry.foto_uri)).length;
+  if (!total) return;
+  Alert.alert(
+    'Liberar espaço no aparelho?',
+    `O Excel foi gerado com ${total} foto(s) incorporada(s). Deseja apagar as cópias locais das fotos para liberar espaço? Os dados das contagens serão mantidos.`,
+    [
+      { text: 'Manter fotos', style: 'cancel' },
+      {
+        text: 'Apagar fotos locais',
+        style: 'destructive',
+        onPress: () => { void removeLocalPhotos(entries); },
+      },
+    ]
+  );
+}
+
 export async function exportBlendCountsXLSX(entries: BlendCount[], session: Session): Promise<void> {
   const workbook = await buildBlendWorkbook(entries, session);
   const filename = `contagem_blends_${session.deposito}_${sanitize(session.nome)}_${new Date().toISOString().slice(0, 10)}.xlsx`;
@@ -284,4 +316,5 @@ export async function exportBlendCountsXLSX(entries: BlendCount[], session: Sess
       UTI: 'org.openxmlformats.spreadsheetml.sheet',
     });
   }
+  offerPhotoCleanup(entries);
 }
