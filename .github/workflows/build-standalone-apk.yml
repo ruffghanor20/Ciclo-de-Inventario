@@ -63,3 +63,5 @@ jobs:
           path: frontend/EstoqueAudit-Pro-Standalone-v2.0.0.apk
           if-no-files-found: error
           retention-days: 14
+
+# Standalone release: o bundle JS é incorporado no APK e não depende do Metro/Expo Go.
