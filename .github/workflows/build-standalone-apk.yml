@@ -1,0 +1,65 @@
+name: Build Standalone APK
+
+on:
+  push:
+    branches:
+      - feat/contagem-blend-maquinas
+    paths:
+      - 'frontend/**'
+      - '.github/workflows/build-standalone-apk.yml'
+  workflow_dispatch:
+
+jobs:
+  build-standalone-apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      NODE_ENV: production
+
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install dependencies
+        run: yarn install --ignore-lockfile --non-interactive
+
+      - name: TypeScript check
+        run: npx tsc --noEmit
+
+      - name: Generate native Android project
+        run: npx expo prebuild --platform android --clean --non-interactive
+
+      - name: Build standalone release APK
+        run: |
+          chmod +x android/gradlew
+          cd android
+          ./gradlew assembleRelease --no-daemon
+
+      - name: Rename APK
+        run: cp android/app/build/outputs/apk/release/app-release.apk EstoqueAudit-Pro-Standalone-v2.0.0.apk
+
+      - name: Upload standalone APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: EstoqueAudit-Pro-Standalone-v2.0.0
+          path: frontend/EstoqueAudit-Pro-Standalone-v2.0.0.apk
+          if-no-files-found: error
+          retention-days: 14
