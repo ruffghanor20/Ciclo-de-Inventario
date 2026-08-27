@@ -2,12 +2,22 @@ import { db, uuid } from './database';
 
 export type MaterialTipo = 'BLEND' | 'DOSADOR';
 export type ModoContagem = 'BLEND' | 'DOSADOR';
+export type MachineTipo = 'Injetora' | 'Sopradora' | 'Extrusora' | 'Outro';
 
 export interface BlendMaterial {
   id: string;
   codigo: string;
   descricao: string;
   tipo: MaterialTipo;
+  created_at: string;
+}
+
+export interface BlendMachine {
+  id: string;
+  codigo: string;
+  label: string;
+  tipo: MachineTipo;
+  ativo: number;
   created_at: string;
 }
 
@@ -33,6 +43,32 @@ export interface BlendCount {
 }
 
 export type NewBlendCount = Omit<BlendCount, 'id' | 'created_at'>;
+
+function seedDefaultMachines(): void {
+  const count = db.getFirstSync<{ count: number }>('SELECT COUNT(*) as count FROM blend_machines');
+  if ((count?.count ?? 0) > 0) return;
+
+  const now = new Date().toISOString();
+  db.withTransactionSync(() => {
+    for (let i = 1; i <= 52; i += 1) {
+      const codigo = String(i).padStart(2, '0');
+      db.runSync(
+        `INSERT INTO blend_machines (id, codigo, label, tipo, ativo, created_at) VALUES (?, ?, ?, ?, 1, ?)`,
+        [uuid(), codigo, `Injetora ${codigo}`, 'Injetora', now]
+      );
+    }
+
+    for (let i = 92; i <= 99; i += 1) {
+      const codigo = String(i);
+      const tipo: MachineTipo = i === 97 ? 'Extrusora' : 'Sopradora';
+      const label = i === 97 ? 'Extrusora 97' : `Sopradora ${codigo}`;
+      db.runSync(
+        `INSERT INTO blend_machines (id, codigo, label, tipo, ativo, created_at) VALUES (?, ?, ?, ?, 1, ?)`,
+        [uuid(), codigo, label, tipo, now]
+      );
+    }
+  });
+}
 
 export function ensureBlendSchema(): void {
   db.execSync(`
@@ -66,9 +102,21 @@ export function ensureBlendSchema(): void {
       created_at TEXT NOT NULL
     )
   `);
+  db.execSync(`
+    CREATE TABLE IF NOT EXISTS blend_machines (
+      id TEXT PRIMARY KEY,
+      codigo TEXT UNIQUE NOT NULL,
+      label TEXT NOT NULL,
+      tipo TEXT NOT NULL,
+      ativo INTEGER DEFAULT 1,
+      created_at TEXT NOT NULL
+    )
+  `);
   db.execSync(`CREATE INDEX IF NOT EXISTS idx_blend_material_codigo ON blend_materials(codigo)`);
   db.execSync(`CREATE INDEX IF NOT EXISTS idx_blend_count_session ON blend_counts(session_id)`);
   db.execSync(`CREATE INDEX IF NOT EXISTS idx_blend_count_maquina ON blend_counts(maquina)`);
+  db.execSync(`CREATE INDEX IF NOT EXISTS idx_blend_machine_codigo ON blend_machines(codigo)`);
+  seedDefaultMachines();
 }
 
 export function normalizeMaterialCode(value: unknown): string {
@@ -115,6 +163,48 @@ export function searchBlendMaterials(query: string, tipo: MaterialTipo, limit = 
 export function getBlendMaterialCount(): number {
   ensureBlendSchema();
   return db.getFirstSync<{ count: number }>('SELECT COUNT(*) as count FROM blend_materials')?.count ?? 0;
+}
+
+export function clearBlendMaterials(): void {
+  ensureBlendSchema();
+  db.runSync(`DELETE FROM blend_materials WHERE id != ''`);
+}
+
+export function getBlendMachines(): BlendMachine[] {
+  ensureBlendSchema();
+  return db.getAllSync<BlendMachine>(
+    `SELECT * FROM blend_machines WHERE ativo = 1 ORDER BY codigo ASC`
+  ).sort((a, b) => {
+    const an = Number(a.codigo);
+    const bn = Number(b.codigo);
+    if (Number.isFinite(an) && Number.isFinite(bn) && an !== bn) return an - bn;
+    return a.codigo.localeCompare(b.codigo, 'pt-BR');
+  });
+}
+
+export function createBlendMachine(codigoRaw: string, labelRaw: string, tipo: MachineTipo): BlendMachine {
+  ensureBlendSchema();
+  const codigo = String(codigoRaw ?? '').trim().toUpperCase();
+  const label = String(labelRaw ?? '').trim();
+  if (!codigo) throw new Error('Informe o código da máquina.');
+  if (!label) throw new Error('Informe o nome da máquina.');
+
+  const existing = db.getFirstSync<BlendMachine>(`SELECT * FROM blend_machines WHERE codigo = ?`, [codigo]);
+  if (existing) throw new Error(`Já existe uma máquina cadastrada com o código ${codigo}.`);
+
+  const row: BlendMachine = {
+    id: uuid(),
+    codigo,
+    label,
+    tipo,
+    ativo: 1,
+    created_at: new Date().toISOString(),
+  };
+  db.runSync(
+    `INSERT INTO blend_machines (id, codigo, label, tipo, ativo, created_at) VALUES (?, ?, ?, ?, 1, ?)`,
+    [row.id, row.codigo, row.label, row.tipo, row.created_at]
+  );
+  return row;
 }
 
 export function createBlendCount(payload: NewBlendCount): BlendCount {
