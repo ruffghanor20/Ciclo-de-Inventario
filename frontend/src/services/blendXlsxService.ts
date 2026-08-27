@@ -38,12 +38,12 @@ function parseTipo(value: unknown, fallback: MaterialTipo): MaterialTipo {
   return fallback;
 }
 
-function rowsFromSheet(sheet: XLSX.WorkSheet): Array<{ codigo: unknown; descricao: unknown; tipoRaw: unknown }> {
-  const matrix = XLSX.utils.sheet_to_json<unknown[]>(sheet, {
+function rowsFromSheet(sheet: unknown): Array<{ codigo: unknown; descricao: unknown; tipoRaw: unknown }> {
+  const matrix = XLSX.utils.sheet_to_json(sheet as any, {
     header: 1,
     defval: '',
     blankrows: false,
-  });
+  }) as unknown[][];
 
   const maxHeaderScan = Math.min(matrix.length, 20);
   let headerRowIndex = -1;
@@ -52,7 +52,7 @@ function rowsFromSheet(sheet: XLSX.WorkSheet): Array<{ codigo: unknown; descrica
   let typeIndex = -1;
 
   for (let i = 0; i < maxHeaderScan; i += 1) {
-    const row = matrix[i] ?? [];
+    const row: unknown[] = matrix[i] ?? [];
     const candidateCodeIndex = findColumnIndex(row, CODE_ALIASES);
     if (candidateCodeIndex >= 0) {
       headerRowIndex = i;
@@ -65,7 +65,7 @@ function rowsFromSheet(sheet: XLSX.WorkSheet): Array<{ codigo: unknown; descrica
 
   if (headerRowIndex < 0 || codeIndex < 0) return [];
 
-  return matrix.slice(headerRowIndex + 1).map((row) => ({
+  return matrix.slice(headerRowIndex + 1).map((row: unknown[]) => ({
     codigo: row?.[codeIndex] ?? '',
     descricao: descriptionIndex >= 0 ? row?.[descriptionIndex] ?? '' : '',
     tipoRaw: typeIndex >= 0 ? row?.[typeIndex] ?? '' : '',
