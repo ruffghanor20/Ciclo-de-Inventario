@@ -42,7 +42,6 @@ export function normalizeCodigo(value: unknown): string {
   const raw = String(value ?? '').trim();
   if (!raw) return '';
 
-  // Excel often converts numeric codes to values like "12345.0"
   if (/^\d+\.0+$/.test(raw)) {
     return raw.replace(/\.0+$/, '');
   }
@@ -81,7 +80,6 @@ export function getItemByCode(codigo: string): StockItem | null {
   );
   if (direct) return direct;
 
-  // Backward compatibility for legacy imports that stored codes like "123.0"
   return db.getFirstSync<StockItem>(
     `SELECT * FROM stock_items WHERE codigo = ? AND ativo = 1`,
     [`${normalized}.0`]
@@ -160,6 +158,27 @@ export function getCategories(): string[] {
 export function getTotalItems(): number {
   const r = db.getFirstSync<{ count: number }>('SELECT COUNT(*) as count FROM stock_items WHERE ativo = 1');
   return r?.count ?? 0;
+}
+
+export function clearAllItems(): number {
+  const total = getTotalItems();
+  db.runSync(`DELETE FROM stock_items WHERE id != ''`);
+
+  const now = new Date().toISOString();
+  const existing = db.getFirstSync<{ key: string }>(
+    `SELECT * FROM app_settings WHERE key = ?`,
+    ['demo_seed_disabled']
+  );
+  if (existing) {
+    db.runSync(`UPDATE app_settings SET value = ?, updated_at = ? WHERE key = ?`, ['1', now, 'demo_seed_disabled']);
+  } else {
+    db.runSync(
+      `INSERT INTO app_settings (key, value, updated_at) VALUES (?, ?, ?)`,
+      ['demo_seed_disabled', '1', now]
+    );
+  }
+
+  return total;
 }
 
 export function getLowStockItems(): StockItem[] {
