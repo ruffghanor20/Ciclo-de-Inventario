@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   CalendarClock,
   Check,
+  Database,
   Download,
   FlaskConical,
   FolderOpen,
@@ -20,6 +21,7 @@ import { getUsername, saveUsername } from '../../src/db/settingsDB';
 
 type MenuPath =
   | '/(tabs)/dashboard'
+  | '/(tabs)/cadastros'
   | '/(tabs)/inventory'
   | '/(tabs)/sessions'
   | '/(tabs)/schedule'
@@ -35,6 +37,7 @@ type MenuItem = {
 
 const MENU_ITEMS: MenuItem[] = [
   { label: 'Dashboard', path: '/(tabs)/dashboard', icon: LayoutDashboard },
+  { label: 'Cadastros', path: '/(tabs)/cadastros', icon: Database },
   { label: 'Estoque', path: '/(tabs)/inventory', icon: Package },
   { label: 'Sessão de Contagem', path: '/(tabs)/sessions', icon: FolderOpen },
   { label: 'Programação', path: '/(tabs)/schedule', icon: CalendarClock },
@@ -120,6 +123,7 @@ export default function TabsLayout() {
       <View style={styles.content}>
         <Tabs screenOptions={{ headerShown: false, tabBarStyle: { display: 'none' } }}>
           <Tabs.Screen name="dashboard" options={{ title: 'Dashboard' }} />
+          <Tabs.Screen name="cadastros" options={{ title: 'Cadastros' }} />
           <Tabs.Screen name="inventory" options={{ title: 'Estoque' }} />
           <Tabs.Screen name="sessions" options={{ title: 'Sessão de Contagem' }} />
           <Tabs.Screen name="schedule" options={{ title: 'Programação' }} />
