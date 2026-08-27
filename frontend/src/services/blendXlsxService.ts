@@ -22,16 +22,13 @@ function normalizeHeader(value: unknown): string {
     .replace(/[^a-z0-9]+/g, '_');
 }
 
-function valueFrom(row: Record<string, unknown>, aliases: string[]): unknown {
-  const map = Object.keys(row).reduce<Record<string, string>>((acc, key) => {
-    acc[normalizeHeader(key)] = key;
-    return acc;
-  }, {});
-  for (const alias of aliases) {
-    const key = map[normalizeHeader(alias)];
-    if (key !== undefined) return row[key];
-  }
-  return '';
+const CODE_ALIASES = ['codigo', 'código', 'cod', 'material', 'item'].map(normalizeHeader);
+const DESCRIPTION_ALIASES = ['descricao', 'descrição', 'texto', 'description'].map(normalizeHeader);
+const TYPE_ALIASES = ['tipo', 'categoria', 'classe'].map(normalizeHeader);
+
+function findColumnIndex(headers: unknown[], aliases: string[]): number {
+  const normalized = headers.map(normalizeHeader);
+  return normalized.findIndex((value) => aliases.includes(value));
 }
 
 function parseTipo(value: unknown, fallback: MaterialTipo): MaterialTipo {
@@ -39,6 +36,40 @@ function parseTipo(value: unknown, fallback: MaterialTipo): MaterialTipo {
   if (raw.includes('DOS')) return 'DOSADOR';
   if (raw.includes('BLEND')) return 'BLEND';
   return fallback;
+}
+
+function rowsFromSheet(sheet: XLSX.WorkSheet): Array<{ codigo: unknown; descricao: unknown; tipoRaw: unknown }> {
+  const matrix = XLSX.utils.sheet_to_json<unknown[]>(sheet, {
+    header: 1,
+    defval: '',
+    blankrows: false,
+  });
+
+  const maxHeaderScan = Math.min(matrix.length, 20);
+  let headerRowIndex = -1;
+  let codeIndex = -1;
+  let descriptionIndex = -1;
+  let typeIndex = -1;
+
+  for (let i = 0; i < maxHeaderScan; i += 1) {
+    const row = matrix[i] ?? [];
+    const candidateCodeIndex = findColumnIndex(row, CODE_ALIASES);
+    if (candidateCodeIndex >= 0) {
+      headerRowIndex = i;
+      codeIndex = candidateCodeIndex;
+      descriptionIndex = findColumnIndex(row, DESCRIPTION_ALIASES);
+      typeIndex = findColumnIndex(row, TYPE_ALIASES);
+      break;
+    }
+  }
+
+  if (headerRowIndex < 0 || codeIndex < 0) return [];
+
+  return matrix.slice(headerRowIndex + 1).map((row) => ({
+    codigo: row?.[codeIndex] ?? '',
+    descricao: descriptionIndex >= 0 ? row?.[descriptionIndex] ?? '' : '',
+    tipoRaw: typeIndex >= 0 ? row?.[typeIndex] ?? '' : '',
+  }));
 }
 
 async function readWorkbook(file: DocumentPicker.DocumentPickerAsset): Promise<ReturnType<typeof XLSX.read>> {
@@ -78,22 +109,28 @@ export async function importBlendBaseXLSX(): Promise<BlendImportSummary | null> 
 
   for (const sheetName of workbook.SheetNames) {
     const sheet = workbook.Sheets[sheetName];
-    const rows = XLSX.utils.sheet_to_json(sheet, { defval: '' }) as Record<string, unknown>[];
+    const rows = rowsFromSheet(sheet);
+    if (!rows.length) continue;
+
     const sheetUpper = sheetName.toUpperCase();
     const fallback: MaterialTipo = sheetUpper.includes('DOS') ? 'DOSADOR' : 'BLEND';
 
     for (const row of rows) {
-      const codigo = valueFrom(row, ['codigo', 'código', 'cod', 'material', 'item']);
-      const descricao = valueFrom(row, ['descricao', 'descrição', 'texto', 'description']);
-      const tipoRaw = valueFrom(row, ['tipo', 'categoria', 'classe']);
-      const tipo = parseTipo(tipoRaw, fallback);
-      if (!String(codigo ?? '').trim()) {
-        ignored += 1;
+      const codigo = String(row.codigo ?? '').trim();
+      const descricao = String(row.descricao ?? '').trim();
+      if (!codigo) {
+        if (descricao) ignored += 1;
         continue;
       }
+
+      const tipo = parseTipo(row.tipoRaw, fallback);
       upsertBlendMaterial(codigo, descricao, tipo);
       createdOrUpdated += 1;
     }
+  }
+
+  if (createdOrUpdated === 0) {
+    throw new Error('Nenhum código foi encontrado. Verifique se a planilha possui a coluna "codigo" nas primeiras 20 linhas.');
   }
 
   return { createdOrUpdated, ignored, fileName: file.name ?? 'base_blends.xlsx' };
