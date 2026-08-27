@@ -162,9 +162,17 @@ export function getTotalItems(): number {
 
 export function clearAllItems(): number {
   const total = getTotalItems();
+  const now = new Date().toISOString();
   db.runSync(`DELETE FROM stock_items WHERE id != ''`);
 
-  const now = new Date().toISOString();
+  // Sentinela inativa: seedDemoData verifica COUNT(*) e não recria os itens demo no próximo boot.
+  db.runSync(
+    `INSERT INTO stock_items
+     (id, codigo, descricao, categoria, unidade, localizacao, saldo_sistema, estoque_minimo, custo_ajuste, data_contado, curva_abc, proxima_contagem, ativo, created_at, updated_at)
+     VALUES (?, ?, ?, '', 'UN', '', 0, 0, 0, NULL, 'C', NULL, 0, ?, ?)`,
+    ['__base_zerada__', '__BASE_ZERADA__', 'Base zerada pelo usuário', now, now]
+  );
+
   const existing = db.getFirstSync<{ key: string }>(
     `SELECT * FROM app_settings WHERE key = ?`,
     ['demo_seed_disabled']
