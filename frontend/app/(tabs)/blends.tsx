@@ -12,17 +12,14 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useFocusEffect } from 'expo-router';
-import { Camera, Download, FileSpreadsheet, Plus, Save, Trash2, X } from 'lucide-react-native';
+import { Camera, Download, Save, X } from 'lucide-react-native';
 import { Colors } from '../../src/theme/colors';
 import {
   BlendCount,
   BlendMachine,
   BlendMaterial,
-  MachineTipo,
   MaterialTipo,
-  clearBlendMaterials,
   createBlendCount,
-  createBlendMachine,
   ensureBlendSchema,
   getBlendCountsByMachine,
   getBlendCountsBySession,
@@ -30,12 +27,9 @@ import {
   getBlendMaterialCount,
   searchBlendMaterials,
 } from '../../src/db/blendDB';
-import { clearAllItems } from '../../src/db/itemsDB';
 import { getOpenSession, Session } from '../../src/db/sessionsDB';
 import { getUsername } from '../../src/db/settingsDB';
-import { exportBlendCountsXLSX, importBlendBaseXLSX } from '../../src/services/blendXlsxService';
-
-const MACHINE_TYPES: MachineTipo[] = ['Injetora', 'Sopradora', 'Extrusora', 'Outro'];
+import { exportBlendCountsXLSX } from '../../src/services/blendXlsxService';
 
 function parseKg(value: string): number {
   const n = Number(value.trim().replace(',', '.'));
@@ -135,10 +129,6 @@ export default function BlendsScreen() {
   const [cameraOpen, setCameraOpen] = useState(false);
   const [counts, setCounts] = useState<BlendCount[]>([]);
   const [baseCount, setBaseCount] = useState(0);
-  const [showMachineForm, setShowMachineForm] = useState(false);
-  const [newMachineCode, setNewMachineCode] = useState('');
-  const [newMachineLabel, setNewMachineLabel] = useState('');
-  const [newMachineType, setNewMachineType] = useState<MachineTipo>('Injetora');
   const [permission, requestPermission] = useCameraPermissions();
   const cameraRef = useRef<any>(null);
 
@@ -171,69 +161,6 @@ export default function BlendsScreen() {
     setComponents([{ code: '', kg: '' }, { code: '', kg: '' }, { code: '', kg: '' }]);
     setPhotoUri('');
     setCameraOpen(false);
-  };
-
-  const handleImportBase = async () => {
-    try {
-      const result = await importBlendBaseXLSX();
-      if (!result) return;
-      setBaseCount(getBlendMaterialCount());
-      Alert.alert('Base importada', `${result.createdOrUpdated} códigos processados.\n${result.ignored} linhas ignoradas.`);
-    } catch (error) {
-      Alert.alert('Erro na importação', error instanceof Error ? error.message : 'Não foi possível importar a base.');
-    }
-  };
-
-  const handleClearBlendBase = () => {
-    Alert.alert(
-      'Zerar base de códigos?',
-      'Todos os códigos cadastrados de Blend e Dosador serão removidos. As contagens já realizadas serão mantidas.',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Zerar base',
-          style: 'destructive',
-          onPress: () => {
-            clearBlendMaterials();
-            setBaseCount(0);
-            Alert.alert('Base zerada', 'Os códigos de Blend/Dosador foram removidos.');
-          },
-        },
-      ]
-    );
-  };
-
-  const handleClearInitialItems = () => {
-    Alert.alert(
-      'Zerar cadastro inicial de itens?',
-      'Os itens do cadastro de estoque serão removidos. O histórico de contagens e as sessões serão preservados.',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Zerar itens',
-          style: 'destructive',
-          onPress: () => {
-            const total = clearAllItems();
-            Alert.alert('Cadastro zerado', `${total} item(ns) removido(s). Os dados de demonstração não serão recriados ao reiniciar o app.`);
-          },
-        },
-      ]
-    );
-  };
-
-  const handleAddMachine = () => {
-    try {
-      const machine = createBlendMachine(newMachineCode, newMachineLabel, newMachineType);
-      setMachines(getBlendMachines());
-      setMachineId(machine.codigo);
-      setNewMachineCode('');
-      setNewMachineLabel('');
-      setNewMachineType('Injetora');
-      setShowMachineForm(false);
-      Alert.alert('Máquina cadastrada', `${machine.label} adicionada com sucesso.`);
-    } catch (error) {
-      Alert.alert('Cadastro de máquina', error instanceof Error ? error.message : 'Não foi possível cadastrar a máquina.');
-    }
   };
 
   const handleExport = async () => {
@@ -322,76 +249,11 @@ export default function BlendsScreen() {
             <Text style={styles.baseText}>Base cadastrada: {baseCount} códigos · {machines.length} máquinas</Text>
           </View>
           <View style={styles.topActions}>
-            <TouchableOpacity style={styles.iconBtn} onPress={handleImportBase}>
-              <FileSpreadsheet size={18} color={Colors.text.primary} />
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.iconBtn} onPress={handleExport}>
+            <TouchableOpacity style={styles.iconBtn} onPress={handleExport} accessibilityLabel="Exportar contagens">
               <Download size={18} color={Colors.text.primary} />
             </TouchableOpacity>
           </View>
         </View>
-
-        <View style={styles.adminActions}>
-          <TouchableOpacity style={styles.adminBtn} onPress={handleImportBase}>
-            <FileSpreadsheet size={16} color={Colors.text.primary} />
-            <Text style={styles.adminBtnText}>Importar códigos</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.adminBtn} onPress={() => setShowMachineForm((value) => !value)}>
-            <Plus size={16} color={Colors.text.primary} />
-            <Text style={styles.adminBtnText}>Cadastrar máquina</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.adminBtnDanger} onPress={handleClearBlendBase}>
-            <Trash2 size={16} color={Colors.status.danger} />
-            <Text style={styles.adminBtnDangerText}>Zerar base Blend</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.adminBtnDanger} onPress={handleClearInitialItems}>
-            <Trash2 size={16} color={Colors.status.danger} />
-            <Text style={styles.adminBtnDangerText}>Zerar itens iniciais</Text>
-          </TouchableOpacity>
-        </View>
-
-        {showMachineForm && (
-          <View style={styles.machineForm}>
-            <Text style={styles.formTitle}>Nova máquina</Text>
-            <View style={styles.machineFormRow}>
-              <TextInput
-                value={newMachineCode}
-                onChangeText={setNewMachineCode}
-                placeholder="Código (ex.: 53)"
-                placeholderTextColor={Colors.text.muted}
-                autoCapitalize="characters"
-                style={[styles.input, styles.machineCodeInput]}
-              />
-              <TextInput
-                value={newMachineLabel}
-                onChangeText={setNewMachineLabel}
-                placeholder="Nome da máquina"
-                placeholderTextColor={Colors.text.muted}
-                style={[styles.input, { flex: 1 }]}
-              />
-            </View>
-            <View style={styles.machineTypeRow}>
-              {MACHINE_TYPES.map((type) => (
-                <TouchableOpacity
-                  key={type}
-                  style={[styles.machineTypeBtn, newMachineType === type && styles.machineTypeBtnActive]}
-                  onPress={() => setNewMachineType(type)}
-                >
-                  <Text style={[styles.machineTypeText, newMachineType === type && styles.machineTypeTextActive]}>{type}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-            <View style={styles.machineFormActions}>
-              <TouchableOpacity style={styles.secondaryBtn} onPress={() => setShowMachineForm(false)}>
-                <Text style={styles.secondaryBtnText}>Cancelar</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.machineSaveBtn} onPress={handleAddMachine}>
-                <Save size={16} color="#fff" />
-                <Text style={styles.saveTextSmall}>Cadastrar</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        )}
 
         <Text style={styles.sectionTitle}>1. Selecione a máquina</Text>
         <Text style={styles.groupLabel}>Injetoras</Text>
@@ -492,23 +354,6 @@ const styles = StyleSheet.create({
   baseText: { color: Colors.brand.primary, fontSize: 11, marginTop: 5, fontWeight: '700' },
   topActions: { flexDirection: 'row', gap: 8 },
   iconBtn: { width: 40, height: 40, borderRadius: 10, backgroundColor: Colors.bg.tertiary, alignItems: 'center', justifyContent: 'center' },
-  adminActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  adminBtn: { minHeight: 40, borderRadius: 9, borderWidth: 1, borderColor: Colors.border.subtle, backgroundColor: Colors.bg.secondary, flexDirection: 'row', alignItems: 'center', gap: 7, paddingHorizontal: 10 },
-  adminBtnText: { color: Colors.text.primary, fontSize: 11, fontWeight: '700' },
-  adminBtnDanger: { minHeight: 40, borderRadius: 9, borderWidth: 1, borderColor: Colors.status.danger + '55', backgroundColor: Colors.bg.secondary, flexDirection: 'row', alignItems: 'center', gap: 7, paddingHorizontal: 10 },
-  adminBtnDangerText: { color: Colors.status.danger, fontSize: 11, fontWeight: '700' },
-  machineForm: { borderRadius: 12, borderWidth: 1, borderColor: Colors.border.strong, backgroundColor: Colors.bg.secondary, padding: 12, gap: 10 },
-  formTitle: { color: Colors.text.primary, fontSize: 14, fontWeight: '800' },
-  machineFormRow: { flexDirection: 'row', gap: 8 },
-  machineCodeInput: { width: 120 },
-  machineTypeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
-  machineTypeBtn: { borderRadius: 999, borderWidth: 1, borderColor: Colors.border.subtle, paddingHorizontal: 10, paddingVertical: 7 },
-  machineTypeBtnActive: { borderColor: Colors.brand.primary, backgroundColor: Colors.brand.primary + '22' },
-  machineTypeText: { color: Colors.text.secondary, fontSize: 11, fontWeight: '700' },
-  machineTypeTextActive: { color: Colors.brand.primary },
-  machineFormActions: { flexDirection: 'row', gap: 8 },
-  machineSaveBtn: { flex: 1, minHeight: 44, borderRadius: 10, backgroundColor: Colors.brand.primary, flexDirection: 'row', gap: 8, alignItems: 'center', justifyContent: 'center' },
-  saveTextSmall: { color: '#fff', fontSize: 13, fontWeight: '800' },
   sectionTitle: { color: Colors.text.primary, fontSize: 15, fontWeight: '800', marginTop: 6 },
   groupLabel: { color: Colors.text.muted, fontSize: 11, marginTop: 2 },
   machineGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
