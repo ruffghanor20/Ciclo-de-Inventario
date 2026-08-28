@@ -26,6 +26,7 @@ export const Colors = {
   },
   status: {
     falta: '#EF4444',
+    danger: '#EF4444',
     diferenca: '#10B981',
     ok: '#A1A1AA',
     baixo: '#F59E0B',

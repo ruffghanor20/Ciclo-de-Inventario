@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from 'expo-router';
-import { CalendarClock, FolderOpen, Trash2 } from 'lucide-react-native';
+import { CalendarClock, FolderOpen, Trash2, Warehouse } from 'lucide-react-native';
 import { Colors } from '../../src/theme/colors';
 import {
   createSession,
@@ -40,11 +40,7 @@ export default function SessionsScreen() {
     setSessions(getAllSessionsWithStats());
   }, []);
 
-  useFocusEffect(
-    useCallback(() => {
-      loadData();
-    }, [loadData])
-  );
+  useFocusEffect(useCallback(() => { loadData(); }, [loadData]));
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
@@ -55,16 +51,10 @@ export default function SessionsScreen() {
   const handleLoadSession = (session: SessionWithStats) => {
     Alert.alert(
       'Carregar sessão',
-      `Deseja carregar a sessão "${session.nome}" para continuar as contagens?`,
+      `Deseja carregar a sessão "${session.nome}" do depósito ${session.deposito}?`,
       [
         { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Carregar',
-          onPress: () => {
-            loadSession(session.id);
-            loadData();
-          },
-        },
+        { text: 'Carregar', onPress: () => { loadSession(session.id); loadData(); } },
       ]
     );
   };
@@ -72,7 +62,7 @@ export default function SessionsScreen() {
   const handleDeleteSession = (session: SessionWithStats) => {
     Alert.alert(
       'Excluir sessão',
-      `Excluir "${session.nome}" e ${session.total_contagens} contagem(ns) vinculada(s)?`,
+      `Excluir "${session.nome}" e as contagens vinculadas?`,
       [
         { text: 'Cancelar', style: 'cancel' },
         {
@@ -89,16 +79,25 @@ export default function SessionsScreen() {
     );
   };
 
-  const handleNewSession = () => {
+  const createForDeposito = (deposito: '1020' | '1023') => {
     const now = new Date();
-    const nome = `Contagem ${now.toLocaleDateString('pt-BR')} ${now.toLocaleTimeString('pt-BR', {
-      hour: '2-digit',
-      minute: '2-digit',
-    })}`;
+    const nome = `Contagem ${deposito} - ${now.toLocaleDateString('pt-BR')} ${now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`;
     const responsavel = getUsername() || 'Operador';
-    const created = createSession(nome, responsavel);
+    const created = createSession(nome, responsavel, deposito);
     loadSession(created.id);
     loadData();
+  };
+
+  const handleNewSession = () => {
+    Alert.alert(
+      'Iniciar sessão',
+      'Selecione o depósito que será contado.',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        { text: 'Depósito 1020', onPress: () => createForDeposito('1020') },
+        { text: 'Depósito 1023', onPress: () => createForDeposito('1023') },
+      ]
+    );
   };
 
   return (
@@ -117,9 +116,7 @@ export default function SessionsScreen() {
         data={sessions}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContent}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.brand.primary} />
-        }
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.brand.primary} />}
         renderItem={({ item }) => {
           const isOpen = item.status === 'aberta';
           return (
@@ -127,12 +124,14 @@ export default function SessionsScreen() {
               <View style={styles.cardTop}>
                 <Text style={styles.name} numberOfLines={1}>{item.nome}</Text>
                 <View style={[styles.statusBadge, isOpen ? styles.badgeOpen : styles.badgeClosed]}>
-                  <Text style={[styles.statusText, isOpen ? styles.statusTextOpen : styles.statusTextClosed]}>
-                    {isOpen ? 'Aberta' : 'Fechada'}
-                  </Text>
+                  <Text style={[styles.statusText, isOpen ? styles.statusTextOpen : styles.statusTextClosed]}>{isOpen ? 'Aberta' : 'Fechada'}</Text>
                 </View>
               </View>
 
+              <View style={styles.metaRow}>
+                <Warehouse size={14} color={Colors.brand.primary} />
+                <Text style={styles.depositText}>Depósito {item.deposito || '1023'}</Text>
+              </View>
               <View style={styles.metaRow}>
                 <CalendarClock size={14} color={Colors.text.muted} />
                 <Text style={styles.metaText}>Início: {formatDateTime(item.data_inicio)}</Text>
@@ -141,17 +140,11 @@ export default function SessionsScreen() {
               <Text style={styles.metaText}>Contagens: {item.total_contagens}</Text>
 
               <View style={styles.actions}>
-                <TouchableOpacity
-                  style={[styles.actionBtn, styles.loadBtn]}
-                  onPress={() => handleLoadSession(item)}
-                >
+                <TouchableOpacity style={[styles.actionBtn, styles.loadBtn]} onPress={() => handleLoadSession(item)}>
                   <FolderOpen size={15} color={Colors.text.primary} />
                   <Text style={styles.actionText}>Carregar</Text>
                 </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.actionBtn, styles.deleteBtn]}
-                  onPress={() => handleDeleteSession(item)}
-                >
+                <TouchableOpacity style={[styles.actionBtn, styles.deleteBtn]} onPress={() => handleDeleteSession(item)}>
                   <Trash2 size={15} color={Colors.brand.error} />
                   <Text style={styles.deleteText}>Excluir</Text>
                 </TouchableOpacity>
@@ -159,12 +152,7 @@ export default function SessionsScreen() {
             </View>
           );
         }}
-        ListEmptyComponent={
-          <EmptyState
-            title="Sem sessões cadastradas"
-            message="Crie uma nova sessão para começar a registrar contagens."
-          />
-        }
+        ListEmptyComponent={<EmptyState title="Sem sessões cadastradas" message="Crie uma nova sessão e selecione o depósito 1020 ou 1023." />}
         showsVerticalScrollIndicator={false}
       />
     </SafeAreaView>
@@ -173,32 +161,13 @@ export default function SessionsScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: Colors.bg.primary },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingTop: 10,
-    paddingBottom: 8,
-  },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingTop: 10, paddingBottom: 8 },
   title: { fontSize: 21, fontWeight: '800', color: Colors.text.primary },
   subtitle: { fontSize: 12, color: Colors.text.muted, marginTop: 2 },
-  newBtn: {
-    backgroundColor: Colors.brand.primary,
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-  },
+  newBtn: { backgroundColor: Colors.brand.primary, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8 },
   newBtnText: { color: '#fff', fontSize: 13, fontWeight: '700' },
   listContent: { padding: 16, gap: 10, paddingBottom: 24 },
-  card: {
-    backgroundColor: Colors.bg.secondary,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: Colors.border.subtle,
-    padding: 12,
-    gap: 6,
-  },
+  card: { backgroundColor: Colors.bg.secondary, borderRadius: 12, borderWidth: 1, borderColor: Colors.border.subtle, padding: 12, gap: 6 },
   cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 },
   name: { flex: 1, fontSize: 14, fontWeight: '700', color: Colors.text.primary },
   statusBadge: { borderRadius: 999, borderWidth: 1, paddingHorizontal: 8, paddingVertical: 3 },
@@ -209,25 +178,11 @@ const styles = StyleSheet.create({
   statusTextClosed: { color: Colors.text.secondary },
   metaRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   metaText: { fontSize: 12, color: Colors.text.secondary },
+  depositText: { fontSize: 12, color: Colors.brand.primary, fontWeight: '700' },
   actions: { flexDirection: 'row', gap: 8, marginTop: 6 },
-  actionBtn: {
-    height: 36,
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  loadBtn: {
-    backgroundColor: Colors.brand.primary + '22',
-    borderWidth: 1,
-    borderColor: Colors.brand.primary + '55',
-  },
-  deleteBtn: {
-    backgroundColor: Colors.brand.error + '12',
-    borderWidth: 1,
-    borderColor: Colors.brand.error + '40',
-  },
+  actionBtn: { height: 36, borderRadius: 10, paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', gap: 6 },
+  loadBtn: { backgroundColor: Colors.brand.primary + '22', borderWidth: 1, borderColor: Colors.brand.primary + '55' },
+  deleteBtn: { backgroundColor: Colors.brand.error + '12', borderWidth: 1, borderColor: Colors.brand.error + '40' },
   actionText: { color: Colors.text.primary, fontSize: 12, fontWeight: '700' },
   deleteText: { color: Colors.brand.error, fontSize: 12, fontWeight: '700' },
 });

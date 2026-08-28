@@ -1,0 +1,67 @@
+name: Build Test APK
+
+on:
+  push:
+    branches:
+      - feat/contagem-blend-maquinas
+    paths:
+      - 'frontend/**'
+      - '.github/workflows/build-test-apk.yml'
+  workflow_dispatch:
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      CI: '1'
+
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install dependencies
+        run: yarn install --no-lockfile --non-interactive
+
+      - name: TypeScript check
+        run: npx tsc --noEmit
+
+      - name: Generate Android project
+        run: npx expo prebuild --platform android --clean
+
+      - name: Build debug APK
+        run: |
+          chmod +x android/gradlew
+          cd android
+          ./gradlew assembleDebug --no-daemon
+
+      - name: Rename APK
+        run: cp android/app/build/outputs/apk/debug/app-debug.apk EstoqueAudit-Pro-Blend-Test-v2.0.0.apk
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: EstoqueAudit-Pro-Blend-Test-v2.0.0
+          path: frontend/EstoqueAudit-Pro-Blend-Test-v2.0.0.apk
+          if-no-files-found: error
+          retention-days: 14
+
+# rebuild requested 2026-08-25
