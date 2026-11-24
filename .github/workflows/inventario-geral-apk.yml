@@ -1,0 +1,53 @@
+name: APK do Inventário Geral
+on:
+  push:
+    branches: [feat/inventario-geral-uc]
+    paths:
+      - 'frontend/**'
+      - '.github/workflows/inventario-geral-apk.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  coletor:
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    defaults:
+      run:
+        working-directory: frontend
+    env:
+      COLETOR_APK: '1'
+      EXPO_NO_TELEMETRY: '1'
+      NODE_ENV: production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Instalar dependências
+        run: corepack yarn install --frozen-lockfile --production=false --non-interactive
+      - name: Testar contagens e XLSX
+        run: |
+          node --test tests/pallets.test.cjs
+          node_modules/.bin/tsc --noEmit
+      - name: Gerar projeto Android
+        run: node_modules/.bin/expo prebuild --platform android --no-install
+      - name: Compilar APK e validar o QR da etiqueta
+        working-directory: frontend/android
+        run: ./gradlew :app:assembleRelease :inventory-label:testReleaseUnitTest -PreactNativeArchitectures=arm64-v8a,armeabi-v7a --max-workers=3 --no-daemon
+      - name: Preparar APK de piloto
+        run: |
+          cp android/app/build/outputs/apk/release/app-release.apk Inventario_Geral.apk
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify Inventario_Geral.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Inventario-Geral-Android
+          path: frontend/Inventario_Geral.apk
+          if-no-files-found: error
+          retention-days: 30
