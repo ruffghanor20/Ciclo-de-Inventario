@@ -15,7 +15,7 @@ Cada coletor mantém sua própria sessão. Um material pode ocupar várias UCs, 
 
 ### Compilar o APK no Windows
 
-Use Node 22.13 ou superior, Yarn 1.22, JDK 17, Android SDK 36, NDK 27.1.12297006 e CMake 3.22.1. No PowerShell, dentro de `frontend`, execute:
+Use Node 22.13 ou superior, Yarn 1.22, JDK 17, Android SDK e Build Tools 35 e 36, NDK 27.1.12297006 e CMake 3.22.1. Execute os comandos no PowerShell dentro de `frontend`.
 
 ```powershell
 $env:COLETOR_APK = "1"

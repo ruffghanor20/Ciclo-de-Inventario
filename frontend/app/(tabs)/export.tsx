@@ -8,6 +8,7 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { FileText, FileSpreadsheet, FolderOpen, X, ChevronDown, CheckCircle, Upload } from 'lucide-react-native';
 import { Colors } from '../../src/theme/colors';
 import { getAllSessions, Session, ensureOpenSession, closeSession, createSession } from '../../src/db/sessionsDB';
+import { getPalletTotal } from '../../src/db/palletDB';
 import { getCountsBySession, getSessionStats } from '../../src/db/countsDB';
 import { exportCSV, exportPDF } from '../../src/services/exportService';
 import { exportXLSX, importItemsFromXLSX } from '../../src/services/xlsxService';
@@ -160,7 +161,7 @@ export default function ExportScreen() {
                 </Text>
                 {selectedSession && (
                   <Text style={styles.sessionBtnMeta}>
-                    {selectedSession.status === 'aberta' ? '🟢 Aberta' : '🔴 Encerrada'} · {stats.total} contagens
+                    {selectedSession.status === 'aberta' ? '🟢 Aberta' : '🔴 Encerrada'} · {stats.total} cíclicas · {getPalletTotal(selectedSession.id)} por UC
                   </Text>
                 )}
               </View>

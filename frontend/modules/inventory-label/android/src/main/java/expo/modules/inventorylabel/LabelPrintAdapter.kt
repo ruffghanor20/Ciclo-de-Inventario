@@ -35,7 +35,8 @@ internal class LabelPrintAdapter(
       callback.onWriteFinished(emptyArray()); return
     }
     try {
-      PrintedPdfDocument(context, attributes).use { document ->
+      val document = PrintedPdfDocument(context, attributes)
+      try {
         val page: PdfDocument.Page = document.startPage(0)
         val landscape = document.pageWidth > document.pageHeight
         val pointsPerDot = 72f / 203.2f  // 8 dots/mm
@@ -60,7 +61,7 @@ internal class LabelPrintAdapter(
         }
         if (signal.isCanceled) { callback.onWriteCancelled(); return }
         FileOutputStream(destination.fileDescriptor).use { document.writeTo(it) }
-      }
+      } finally { document.close() }
       if (signal.isCanceled) callback.onWriteCancelled() else callback.onWriteFinished(arrayOf(PageRange(0, 0)))
     } catch (e: Exception) {
       callback.onWriteFailed(e.localizedMessage ?: "Falha ao preparar a etiqueta.")
