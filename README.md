@@ -1,6 +1,34 @@
 # 📦 EstoqueAudit Pro — Ciclo de Inventário
 Aplicação completa de **contagem cíclica e auditoria de estoque** para ambientes industriais e de armazém. Permite contagem de estoque em tempo real, rastreamento de divergências, leitura de código de barras e geração de relatórios detalhados, com suporte a operação offline.
 ---
+## Inventário geral para carga inicial do SAP
+
+No Android, abra **Inventário geral por UC**. O APK dedicado **Inventário Geral** abre direto nessa tela e mantém sua própria base SQLite. O catálogo começa vazio. Importe uma planilha com `Material` e `Descrição` na primeira linha da primeira aba. A coluna `Unidade` é opcional. Use o tipo Texto para códigos com zeros à esquerda. Também é possível cadastrar um material no menu do coletor.
+
+1. Leia o QR da posição, por exemplo `R.13.11.D`. Aplique a etiqueta de UC inicial no pallet e leia seus dez dígitos. Os dois campos permitem digitação e leitores que funcionam como teclado.
+2. Digite o início do código, toque no material e confira a descrição e a unidade. Informe a quantidade, por exemplo `12,5`, e toque em **Finalizar contagem**.
+3. Para imprimir em cada finalização, ative **Imprimir etiqueta ao finalizar**. Em **Configurar impressora**, use o serviço de impressão cadastrado no Android ou selecione a Zebra já pareada por Bluetooth clássico. Na ZQ510 de 203 dpi, monte a bobina com 60 mm de largura e 90 mm no sentido do avanço. Pelo serviço de impressão, selecione essa mídia e tamanho real. A conexão Bluetooth direta envia uma etiqueta ZPL de 480 × 720 pontos.
+4. Em **Histórico**, filtre por UC, posição ou material, corrija uma contagem da sessão aberta ou reimprima a etiqueta. A impressão usa o registro salvo. Cancelar a impressão ou reimprimir conserva a quantidade.
+5. Toque em **Salvar contagem em XLSX** e escolha uma pasta. O arquivo contém uma linha por material e UC, com as colunas `Material`, `Descrição`, `Quantidade`, `Endereço` e `UC`. Na aba **Exportar** do app-base, selecione a sessão e abra **Inventário geral · XLSX por UC** para consultar também sessões encerradas.
+
+Cada coletor mantém sua própria sessão. Um material pode ocupar várias UCs, e materiais diferentes podem compartilhar uma UC na mesma posição. O coletor impede a duplicação do par material/UC e a atribuição da mesma UC a posições distintas dentro da sessão local. O QR da etiqueta de contagem guarda os cinco campos em JSON UTF-8. A UC é texto do início ao fim. Para trabalhar com vários coletores offline, distribua as posições entre os operadores e confira a unicidade das UCs ao consolidar os arquivos. A correspondência com o programa de carga SAP depende do leiaute usado pela implantação.
+
+### Compilar o APK no Windows
+
+Use Node 22.13 ou superior, Yarn 1.22, JDK 17, Android SDK 36, NDK 27.1.12297006 e CMake 3.22.1. No PowerShell, dentro de `frontend`, execute:
+
+```powershell
+$env:COLETOR_APK = "1"
+$env:NODE_ENV = "production"
+corepack yarn install --frozen-lockfile --production=false
+node --test tests/pallets.test.cjs
+npx expo prebuild --platform android --no-install
+Set-Location android
+.\gradlew.bat :app:assembleRelease :inventory-label:testReleaseUnitTest "-PreactNativeArchitectures=arm64-v8a,armeabi-v7a"
+```
+
+APK em `frontend/android/app/build/outputs/apk/release/app-release.apk`. O pacote dedicado é `com.ruffghanor20.inventariogeral`. O modelo local de compilação Expo assina o APK de piloto com chave de testes. Para distribuir atualizações de produção, configure e conserve a chave de assinatura da empresa. A aplicação de contagem cíclica continua usando `com.ruffghanor20.estoqueaudit`.
+
 ## 🗂️ Estrutura do Projeto
 ```
 Ciclo-de-Inventario/

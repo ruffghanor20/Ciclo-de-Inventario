@@ -4,7 +4,7 @@ import {
   ActivityIndicator, ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { FileText, FileSpreadsheet, FolderOpen, X, ChevronDown, CheckCircle, Upload } from 'lucide-react-native';
 import { Colors } from '../../src/theme/colors';
 import { getAllSessions, Session, ensureOpenSession, closeSession, createSession } from '../../src/db/sessionsDB';
@@ -13,6 +13,7 @@ import { exportCSV, exportPDF } from '../../src/services/exportService';
 import { exportXLSX, importItemsFromXLSX } from '../../src/services/xlsxService';
 
 export default function ExportScreen() {
+  const router = useRouter();
   const [sessions, setSessions] = useState<Session[]>([]);
   const [selectedSession, setSelectedSession] = useState<Session | null>(null);
   const [stats, setStats] = useState({ total: 0, ok: 0, falta: 0, diferenca: 0 });
@@ -214,6 +215,14 @@ export default function ExportScreen() {
         {/* Export Buttons */}
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Formatos de Exportação</Text>
+          <TouchableOpacity testID="export-pallet-history" style={[styles.exportBtn, styles.exportXlsxBtn]}
+            disabled={!selectedSession} onPress={() => selectedSession && router.push({ pathname: '/coletor', params: { sessionId: selectedSession.id, modo: 'historico' } })}>
+            <FileSpreadsheet size={24} color="#fff" />
+            <View style={styles.exportBtnInfo}>
+              <Text style={styles.exportBtnTitle}>Inventário geral · XLSX por UC</Text>
+              <Text style={styles.exportBtnSub}>Conferir posições e salvar a planilha desta sessão</Text>
+            </View>
+          </TouchableOpacity>
 
           <TouchableOpacity
             testID="export-xlsx-btn"

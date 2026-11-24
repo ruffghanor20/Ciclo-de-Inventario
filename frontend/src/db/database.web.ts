@@ -160,6 +160,12 @@ class WebDb {
         return row => re.test(String(row[col] ?? '').toUpperCase());
       }
 
+      // O formulário de pallet pesquisa um prefixo literal e escapa os curingas.
+      if (/^codigo\s+LIKE\s+\?\s+ESCAPE/i.test(cond)) {
+        const prefix = String(args[ai++]).slice(0, -1).replace(/\\(.)/g, '$1').toUpperCase();
+        return row => String(row.codigo ?? '').toUpperCase().startsWith(prefix);
+      }
+
       // col LIKE ?
       mm = cond.match(/^(\w+)\s+LIKE\s+\?$/i);
       if (mm) {
@@ -185,7 +191,7 @@ class WebDb {
         const col = mm[1], op = mm[2], val = args[ai++];
         return row => {
           const rv = row[col]; const rv2 = Number(rv); const v2 = Number(val);
-          if (op === '=' || op === '==') return rv === val || rv2 === v2;
+          if (op === '=' || op === '==') return typeof rv === 'string' && typeof val === 'string' ? rv === val : rv === val || rv2 === v2;
           if (op === '!=' || op === '<>') return rv !== val && rv2 !== v2;
           if (op === '<') return rv2 < v2;
           if (op === '>') return rv2 > v2;

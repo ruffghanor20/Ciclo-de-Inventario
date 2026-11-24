@@ -94,6 +94,12 @@ export default function DashboardScreen() {
           <View style={styles.onlineDot} />
         </View>
 
+        <TouchableOpacity testID="open-coletor" style={styles.actionBtn} onPress={() => router.push('/coletor')}>
+          <Package size={20} color={Colors.brand.primary} />
+          <Text style={styles.actionBtnText}>Inventário geral por UC</Text>
+          <ChevronRight size={18} color={Colors.text.secondary} />
+        </TouchableOpacity>
+
         {/* Stat Cards */}
         <View style={styles.statsRow}>
           <StatCard

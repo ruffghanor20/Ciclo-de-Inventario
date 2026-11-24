@@ -38,3 +38,9 @@ yarn-error.*
 *.tsbuildinfo
 
 app-example
+
+# Projeto nativo gerado por Expo Prebuild
+/android/
+/ios/
+/modules/*/android/build/
+/modules/*/android/.gradle/

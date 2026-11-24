@@ -8,11 +8,12 @@ import { getUsername, saveUsername } from '../../src/db/settingsDB';
 
 type MenuItem = {
   label: string;
-  path: '/(tabs)/dashboard' | '/(tabs)/inventory' | '/(tabs)/sessions' | '/(tabs)/schedule' | '/(tabs)/scan' | '/(tabs)/export';
+  path: '/coletor' | '/(tabs)/dashboard' | '/(tabs)/inventory' | '/(tabs)/sessions' | '/(tabs)/schedule' | '/(tabs)/scan' | '/(tabs)/export';
   icon: React.ComponentType<{ size?: number; color?: string; strokeWidth?: number }>;
 };
 
 const MENU_ITEMS: MenuItem[] = [
+  { label: 'Inventário geral · UC', path: '/coletor', icon: ScanLine },
   { label: 'Dashboard', path: '/(tabs)/dashboard', icon: LayoutDashboard },
   { label: 'Estoque', path: '/(tabs)/inventory', icon: Package },
   { label: 'Sessao de Contagem', path: '/(tabs)/sessions', icon: FolderOpen },

@@ -27,7 +27,10 @@ export function getAllSessionsWithStats(): SessionWithStats[] {
       `SELECT COUNT(*) as c FROM count_entries WHERE session_id = ?`,
       [session.id]
     )?.c ?? 0;
-    return { ...session, total_contagens: total };
+    const pallets = db.getFirstSync<{ c: number }>(
+      'SELECT COUNT(*) AS c FROM pallet_counts WHERE session_id = ?', [session.id]
+    )?.c ?? 0;
+    return { ...session, total_contagens: total + pallets };
   });
 }
 
@@ -83,6 +86,7 @@ export function loadSession(id: string): Session | null {
 
 export function deleteSession(id: string): void {
   db.withTransactionSync(() => {
+    db.runSync(`DELETE FROM pallet_counts WHERE session_id = ?`, [id]);
     db.runSync(`DELETE FROM count_entries WHERE session_id = ?`, [id]);
     db.runSync(`DELETE FROM inventory_sessions WHERE id = ?`, [id]);
   });
